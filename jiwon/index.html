@@ -167,8 +167,6 @@ body {
 .sl .hint { font-size: 11px; color: var(--muted); margin-top: 4px; display: none; line-height: 1.45; }
 .sl.open .hint { display: block; }
 .sl .name { cursor: pointer; border-bottom: 1px dotted var(--dim); }
-.sl.pick select { width: 100%; flex: none; margin-top: 4px; }
-.sl.pick { margin-bottom: 10px; }
 
 input[type=range] {
   -webkit-appearance: none; appearance: none;
@@ -419,7 +417,7 @@ td.wrap, th.wrap { white-space: normal; min-width: 170px; }
    각 값의 출처는 SOURCES 표에 그대로 적어 두었다.
    --------------------------------------------------------------- */
 var EFFECT = {
-  mask: 0.53,          // 종류를 가리지 않았을 때의 마스크 효과 (Chu DK et al., Lancet, 2020)
+  mask: 0.53,          // 마스크 착용 시 전파 53% 감소  (Chu DK et al., Lancet, 2020)
   distance: 0.82,      // 1 m 이상 거리두기 시 82% 감소 (Chu DK et al., Lancet, 2020)
   hand: 0.20,          // 손씻기 시 호흡기 감염 약 20% 감소 (Aiello AE et al., AJPH, 2008)
   vaccine: 0.92,       // mRNA 백신 2차 접종 감염예방 약 92% (CDC MMWR, 2021)
@@ -448,10 +446,8 @@ var VARS = [
     desc: '한 번 나은 사람의 절반이 다시 걸릴 수 있는 상태로 돌아가기까지 걸리는 시간. 0으로 두면 평생 면역이 유지된다(예전 모형)' },
   { key: 'mask',      region: '위생',   name: '마스크 착용률', unit: 'pct',  min: 0,    max: 1,    step: 0.01, def: 0.50,
     desc: '병원체가 몸 안으로 들어오는 것을 막으므로 선천면역의 외부 방어를 돕는다' },
-  { key: 'maskType',  region: '위생',   name: '마스크 종류',   unit: 'pick', min: 0,   max: 5,    step: 1,    def: 0,
-    desc: '어떤 마스크를 쓰느냐에 따라 막아주는 정도가 크게 다르다. 천 마스크는 효과가 확인되지 않았다' },
-  { key: 'distance',  region: '위생',   name: '거리두기 준수율 (1 m 기준)', unit: 'pct', min: 0,   max: 1,    step: 0.01, def: 0.30,
-    desc: '1 m 이상 떨어졌을 때의 효과(82% 감소)를 준수율만큼 반영한다. 더 멀어지면 효과가 커지지만 이 모형은 1 m 만 쓴다' },
+  { key: 'distance',  region: '위생',   name: '거리두기 준수율', unit: 'pct', min: 0,   max: 1,    step: 0.01, def: 0.30,
+    desc: '1 m 이상 떨어졌을 때의 효과를 준수율만큼 반영한다' },
   { key: 'hand',      region: '위생',   name: '손씻기 준수율', unit: 'pct',  min: 0,    max: 1,    step: 0.01, def: 0.50,
     desc: '접촉을 통한 전파를 줄인다' },
   { key: 'nutrition', region: '영양',   name: '영양 충족도',   unit: 'pct',  min: 0,    max: 1,    step: 0.01, def: 0.75,
@@ -460,32 +456,6 @@ var VARS = [
     desc: '비타민 D 같은 미량영양소가 충분할수록 호흡기 감염이 줄어든다' },
   { key: 'nutriSd',   region: '영양',   name: '영양 격차',     unit: 'pct',  min: 0,    max: 0.35, step: 0.01, def: 0.15,
     desc: '사람마다 영양 상태가 얼마나 벌어져 있는지. 0이면 모두 똑같고, 클수록 잘 먹는 사람과 못 먹는 사람의 차이가 커진다. 아래 20%를 영양 취약층으로 본다' }
-];
-
-/* 마스크는 종류에 따라 효과가 크게 갈린다. 착용률과 따로 고를 수 있게 해 둔다.
-   effect 는 감염 확률을 얼마나 깎는지이고, 착용률만큼만 인구에 적용된다.
-
-   basis 는 그 숫자가 어디서 왔는지다. 셋을 반드시 구분해서 써야 한다.
-     meas  실제로 감염 위험을 측정한 연구값
-     weak  측정은 했지만 통계적으로 유의하지 않았다
-     est   감염 위험을 잰 연구가 없어 우리가 추정한 값
-
-   추정은 포집효율 곱하기 (1 빼기 누설률) 로 했다. 이 식을 KF94 에 넣으면 0.84 가
-   나오는데, 실제로 측정된 0.83 과 거의 같아서 나머지 등급에도 같은 식을 썼다.
-   그래도 추정은 추정이다. 보고서에는 반드시 추정값이라고 밝혀야 한다. */
-var MASK_TYPES = [
-  { key: 'mixed',  name: '종류 섞임',   effect: 0.53, basis: 'meas',
-    ref: 'Chu DK et al., Lancet 2020. 종류를 나누지 않은 메타분석 값' },
-  { key: 'cloth',  name: '천 마스크',   effect: 0.56, basis: 'weak',
-    ref: 'Andrejko KL et al., MMWR 2022. aOR 0.44 (95% CI 0.17~1.17). 신뢰구간이 1을 넘어 효과가 있다고 말할 수 없다' },
-  { key: 'dental', name: '덴탈 마스크', effect: 0.66, basis: 'meas',
-    ref: 'Andrejko KL et al., MMWR 2022. 수술용 마스크 aOR 0.34 (95% CI 0.13~0.90)' },
-  { key: 'kf80',   name: 'KF80',       effect: 0.60, basis: 'est',
-    ref: '감염 위험을 직접 잰 연구가 없다. 식약처 기준 포집효율 80%, 누설률 25% 에서 0.80 곱하기 0.75 로 추정' },
-  { key: 'kf94',   name: 'KF94',       effect: 0.83, basis: 'meas',
-    ref: 'Andrejko KL et al., MMWR 2022. N95 / KN95 aOR 0.17 (95% CI 0.05~0.64). KF94 를 같은 등급으로 본 값' },
-  { key: 'kf99',   name: 'KF99',       effect: 0.94, basis: 'est',
-    ref: '감염 위험을 직접 잰 연구가 없다. 식약처 기준 포집효율 99%, 누설률 5% 에서 0.99 곱하기 0.95 로 추정' }
 ];
 
 var REGIONS = ['병원체', '면역', '위생', '영양'];
@@ -553,10 +523,6 @@ function makeRandom(seed) {
    한 번 접촉했을 때 감염되려면 모든 방어 수단을 다 통과해야 하므로,
    각 방어 수단의 통과 확률을 곱한다.
    --------------------------------------------------------------- */
-function maskEffect(p) {
-  var t = MASK_TYPES[Math.round(p.maskType) | 0];
-  return (t ? t.effect : EFFECT.mask);
-}
 function prrFactor(prr)           { return 1.4 - 0.8 * prr; }              // 0.6배에서 1.4배
 function nutritionFactor(n)       { return 1 + EFFECT.malnutrition * (1 - n); }  // 1배에서 2.5배
 function microFactor(m)           { return 1 - EFFECT.micro * m; }
@@ -590,7 +556,7 @@ function vaccineAtDay(mut, d)     { return Math.max(0.30, EFFECT.vaccine * (1 - 
 /* 방어 수단을 모두 통과할 확률 중에서 인구 전체가 똑같이 나눠 갖는 부분.
    백신과 영양은 사람마다 다르므로 여기 넣지 않고 개인별로 따로 곱한다. */
 function envMultiplier(p) {
-  return (1 - maskEffect(p) * p.mask)
+  return (1 - EFFECT.mask * p.mask)
        * (1 - EFFECT.distance * p.distance)
        * (1 - EFFECT.hand * p.hand)
        * prrFactor(p.prr);
@@ -934,8 +900,6 @@ function runRepeats(params, reps, opts, seed0) {
 var SOURCES = [
   { item: '마스크 착용', value: '전파 53% 감소', ref: 'Chu DK et al., Lancet 395:1973, 2020 (메타분석)' },
   { item: '거리두기 1 m 이상', value: '82% 감소', ref: 'Chu DK et al., Lancet 395:1973, 2020 (메타분석)' },
-  { item: '마스크 종류별 효과', value: 'N95 / KN95 83% 감소, 수술용 66% 감소, 천 마스크는 유의하지 않음', ref: 'Andrejko KL et al., MMWR 71:212, 2022 (캘리포니아 사례대조)' },
-  { item: 'KF 등급 기준', value: '포집효율 KF80 80%, KF94 94%, KF99 99% 이상 / 누설률 25%, 11%, 5% 이하', ref: '식품의약품안전처 보건용 마스크 기준규격' },
   { item: '손씻기', value: '호흡기 감염 약 20% 감소', ref: 'Aiello AE et al., Am J Public Health 98:1372, 2008' },
   { item: 'mRNA 백신 2차 접종', value: '감염 예방 약 92%', ref: 'CDC MMWR 70:495, 2021' },
   { item: '비타민 D 충분 섭취', value: '급성 호흡기 감염 12% 감소', ref: 'Martineau AR et al., BMJ 356:i6583, 2017 (메타분석)' },
@@ -953,10 +917,6 @@ var SOURCES = [
 
 /* 값 표시 형식 */
 function formatValue(key, v) {
-  if (key === 'maskType') {
-    var t = MASK_TYPES[Math.round(v) | 0];
-    return t ? t.name : '종류 섞임';
-  }
   if (key === 'toxicity') return Math.round(v) + '일';
   if (key === 'waning') return v <= 0 ? '평생 유지' : Math.round(v) + '일';
   return Math.round(v * 100) + '%';
@@ -965,7 +925,6 @@ function formatValue(key, v) {
 /* 다른 모듈은 모두 이 E 하나로만 엔진에 접근한다 */
 var E = {
   EFFECT: EFFECT, VARS: VARS, REGIONS: REGIONS, SCENARIOS: SCENARIOS, SOURCES: SOURCES, LABELS: LABELS,
-  MASK_TYPES: MASK_TYPES, maskEffect: maskEffect,
   SIM_DEFAULTS: SIM_DEFAULTS,
   defaultParams: defaultParams, scenarioParams: scenarioParams,
   Sim: Sim, runOnce: runOnce, runRepeats: runRepeats,
@@ -1287,14 +1246,6 @@ var Panel = (function () {
     var d = els[key];
     if (!d) return;
     var v = App.params[key];
-    if (d.def.unit === 'pick') {
-      d.input.value = String(Math.round(v));
-      var t = E.MASK_TYPES[Math.round(v) | 0];
-      if (d.ref && t) {
-        d.ref.textContent = '감염 확률 ' + Math.round(t.effect * 100) + '% 감소. ' + t.ref;
-      }
-      return;
-    }
     d.input.value = v;
     d.val.textContent = E.formatValue(key, v);
     d.input.style.setProperty('--pct', (((v - d.def.min) / (d.def.max - d.def.min)) * 100) + '%');
@@ -1353,22 +1304,6 @@ var Panel = (function () {
     E.REGIONS.forEach(function (reg) {
       html += '<div class="region" data-r="' + reg + '"><div class="region-title"><i></i>' + reg + '</div>';
       E.VARS.filter(function (v) { return v.region === reg; }).forEach(function (v) {
-        if (v.unit === 'pick') {
-          /* 고르는 변수는 슬라이더 대신 드롭다운으로 낸다 */
-          var opts = '';
-          E.MASK_TYPES.forEach(function (t, i) {
-            var tag = (t.basis === 'weak') ? ' (근거 불충분)'
-                    : (t.basis === 'est')  ? ' (추정값)' : '';
-            opts += '<option value="' + i + '">' + t.name + tag + '</option>';
-          });
-          html += '<div class="sl pick" data-k="' + v.key + '">' +
-            '<label><span class="name">' + v.name + '</span></label>' +
-            '<select id="i_' + v.key + '">' + opts + '</select>' +
-            '<div class="hint">' + v.desc + '</div>' +
-            '<div class="note" id="r_' + v.key + '" style="margin-top:6px"></div>' +
-            '</div>';
-          return;
-        }
         html += '<div class="sl" data-k="' + v.key + '">' +
           '<label><span class="name">' + v.name + '</span><span class="v" id="v_' + v.key + '"></span></label>' +
           '<input type="range" id="i_' + v.key + '" min="' + v.min + '" max="' + v.max + '" step="' + v.step + '">' +
@@ -1390,13 +1325,8 @@ var Panel = (function () {
     /* 슬라이더 연결 */
     E.VARS.forEach(function (v) {
       var input = document.getElementById('i_' + v.key);
-      els[v.key] = {
-        input: input,
-        val: document.getElementById('v_' + v.key),
-        ref: document.getElementById('r_' + v.key),
-        def: v
-      };
-      input.addEventListener(v.unit === 'pick' ? 'change' : 'input', function () {
+      els[v.key] = { input: input, val: document.getElementById('v_' + v.key), def: v };
+      input.addEventListener('input', function () {
         App.params[v.key] = parseFloat(input.value);
         syncOne(v.key);
         markActiveChip();
