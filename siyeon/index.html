@@ -421,7 +421,9 @@ td.wrap, th.wrap { white-space: normal; min-width: 170px; }
 var EFFECT = {
   mask: 0.53,          // 종류를 가리지 않았을 때의 마스크 효과 (Chu DK et al., Lancet, 2020)
   distance: 0.82,      // 1 m 이상 거리두기 시 82% 감소 (Chu DK et al., Lancet, 2020)
-  hand: 0.20,          // 손씻기 시 호흡기 감염 약 20% 감소 (Aiello AE et al., AJPH, 2008)
+  hand: 0.20,          // 제대로 씻었을 때. 호흡기 감염 약 20% 감소 (Aiello AE et al., AJPH, 2008)
+  handPoor: 0.12,      // 대충 씻었을 때. 5초 물만 1.0 log, 20초 비누 1.7 log 제거를
+                       // 비례로 옮긴 추정 (Jensen DA et al., J Food Prot, 2015)
   vaccine: 0.92,       // mRNA 백신 2차 접종 감염예방 약 92% (CDC MMWR, 2021)
   micro: 0.12,         // 비타민 D 충분 섭취 시 급성호흡기감염 12% 감소 (Martineau AR et al., BMJ, 2017)
   malnutrition: 1.5    // 영양 결핍 시 감염 위험 최대 2.5배 (UNICEF/WHO Lancet 영양 시리즈, 2008)
@@ -448,7 +450,9 @@ var VARS = [
   { key: 'distance',  region: '위생',   name: '거리두기 준수율 (1 m 기준)', unit: 'pct', min: 0,   max: 1,    step: 0.01, def: 0.30,
     desc: '1 m 이상 떨어졌을 때의 효과(82% 감소)를 준수율만큼 반영한다. 더 멀어지면 효과가 커지지만 이 모형은 1 m 만 쓴다' },
   { key: 'hand',      region: '위생',   name: '손씻기 준수율', unit: 'pct',  min: 0,    max: 1,    step: 0.01, def: 0.50,
-    desc: '접촉을 통한 전파를 줄인다' },
+    desc: '손을 씻는 사람의 비율. 얼마나 제대로 씻는지는 아래 슬라이더로 따로 정한다' },
+  { key: 'handProper', region: '위생',  name: '손씻기 제대로 비율', unit: 'pct', min: 0,   max: 1,    step: 0.01, def: 0.50,
+    desc: '손을 씻는 사람 중 15초에서 30초 동안 비누로 제대로 씻는 사람의 비율. 나머지는 5초 정도 물만 묻히고 나온다고 본다' },
   { key: 'nutrition', region: '영양',   name: '영양 충족도',   unit: 'pct',  min: 0,    max: 1,    step: 0.01, def: 0.75,
     desc: '단백질과 열량이 모자라면 면역세포를 제대로 못 만들어 감염에 약해진다' },
   { key: 'micro',     region: '영양',   name: '미량영양소 충족도', unit: 'pct', min: 0, max: 1,    step: 0.01, def: 0.50,
@@ -546,6 +550,12 @@ function maskEffect(p) {
   var t = MASK_TYPES[Math.round(p.maskType) | 0];
   return (t ? t.effect : EFFECT.mask);
 }
+/* 손씻기 효과. 제대로 씻는 사람과 대충 씻는 사람을 비율대로 섞는다.
+   제대로만 100%면 0.20, 대충만 100%면 0.12 가 된다. */
+function handEffect(p) {
+  var q = (p.handProper === undefined) ? 1 : p.handProper;
+  return EFFECT.hand * q + EFFECT.handPoor * (1 - q);
+}
 function prrFactor(prr)           { return 1.4 - 0.8 * prr; }              // 0.6배에서 1.4배
 function nutritionFactor(n)       { return 1 + EFFECT.malnutrition * (1 - n); }  // 1배에서 2.5배
 function microFactor(m)           { return 1 - EFFECT.micro * m; }
@@ -556,7 +566,7 @@ function vaccineAtDay(mut, d)     { return Math.max(0.30, EFFECT.vaccine * (1 - 
 function envMultiplier(p) {
   return (1 - maskEffect(p) * p.mask)
        * (1 - EFFECT.distance * p.distance)
-       * (1 - EFFECT.hand * p.hand)
+       * (1 - handEffect(p) * p.hand)
        * prrFactor(p.prr)
        * nutritionFactor(p.nutrition)
        * microFactor(p.micro);
@@ -822,7 +832,9 @@ var SOURCES = [
   { item: '거리두기 1 m 이상', value: '82% 감소', ref: 'Chu DK et al., Lancet 395:1973, 2020 (메타분석)' },
   { item: '마스크 종류별 효과', value: 'N95 / KN95 83% 감소, 수술용 66% 감소, 천 마스크는 유의하지 않음', ref: 'Andrejko KL et al., MMWR 71:212, 2022 (캘리포니아 사례대조)' },
   { item: 'KF 등급 기준', value: '포집효율 KF80 80%, KF94 94%, KF99 99% 이상 / 누설률 25%, 11%, 5% 이하', ref: '식품의약품안전처 보건용 마스크 기준규격' },
-  { item: '손씻기', value: '호흡기 감염 약 20% 감소', ref: 'Aiello AE et al., Am J Public Health 98:1372, 2008' },
+  { item: '손씻기 (제대로 씻었을 때)', value: '호흡기 감염 약 20% 감소', ref: 'Aiello AE et al., Am J Public Health 98:1372, 2008' },
+  { item: '씻는 시간에 따른 세균 제거량', value: '5초 물만 1.0 log 감소, 20초 비누 1.7 log 감소', ref: 'Jensen DA et al., J Food Prot 78:685, 2015. 손에 묻은 세균을 잰 값이고 감염 위험을 잰 값이 아니다' },
+  { item: '대충 씻었을 때의 효과 (12% 감소)', value: '제대로 씻었을 때의 20% 를 제거량 비율(1.0 나누기 1.7)로 줄인 값', ref: '직접 잰 연구를 찾지 못했다. 위 두 연구를 우리가 이어 붙인 추정값이다' },
   { item: 'mRNA 백신 2차 접종', value: '감염 예방 약 92%', ref: 'CDC MMWR 70:495, 2021' },
   { item: '비타민 D 충분 섭취', value: '급성 호흡기 감염 12% 감소', ref: 'Martineau AR et al., BMJ 356:i6583, 2017 (메타분석)' },
   { item: '영양 결핍', value: '감염 위험 최대 2.5배', ref: 'UNICEF/WHO, Lancet 영양과 면역 시리즈, 2008' },
@@ -844,7 +856,7 @@ function formatValue(key, v) {
 /* 다른 모듈은 모두 이 E 하나로만 엔진에 접근한다 */
 var E = {
   EFFECT: EFFECT, VARS: VARS, REGIONS: REGIONS, SCENARIOS: SCENARIOS, SOURCES: SOURCES, LABELS: LABELS,
-  MASK_TYPES: MASK_TYPES, maskEffect: maskEffect,
+  MASK_TYPES: MASK_TYPES, maskEffect: maskEffect, handEffect: handEffect,
   SIM_DEFAULTS: SIM_DEFAULTS,
   defaultParams: defaultParams, scenarioParams: scenarioParams,
   Sim: Sim, runOnce: runOnce, runRepeats: runRepeats,
