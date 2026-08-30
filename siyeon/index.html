@@ -1,0 +1,1876 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
+<meta name="theme-color" content="#0b0f1c">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>다변수 감염 시뮬레이션</title>
+<style>
+/* =====================================================================
+   화면 스타일
+   팔레트는 파랑과 주황 두 축만 쓰고, 상태는 색과 모양 두 가지로
+   동시에 구분되게 한다.
+   ===================================================================== */
+
+:root {
+  --bg-0: #0b0f1c;
+  --bg-1: #141a2e;
+  --card: rgba(23, 30, 51, 0.72);
+  --card-2: rgba(30, 38, 63, 0.6);
+  --line: rgba(130, 150, 200, 0.16);
+  --ink: #e9edf8;
+  --muted: #98a2bd;
+  --dim: rgba(109, 118, 145, 0.5);
+
+  --c-s: #4ea8de;
+  --c-i: #f2860e;
+  --c-r: #c3cadb;
+  --accent: #6ea8ff;
+
+  --r-lg: 16px;
+  --r-md: 11px;
+  --panel-w: 320px;
+  --top-h: 54px;
+}
+
+body.hc {
+  --c-s: #78c8ff;
+  --c-i: #ffffff;
+  --c-r: #7d8aa8;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+html, body { height: 100%; overscroll-behavior: none; }
+
+body {
+  font-family: "Pretendard", -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo",
+               "Malgun Gothic", "Noto Sans KR", system-ui, sans-serif;
+  color: var(--ink);
+  background: var(--bg-0);
+  background-image:
+    radial-gradient(900px 600px at 15% -10%, rgba(78, 168, 222, 0.16), transparent 65%),
+    radial-gradient(800px 600px at 100% 40%, rgba(242, 134, 14, 0.10), transparent 60%),
+    linear-gradient(180deg, var(--bg-0), var(--bg-1));
+  background-attachment: fixed;
+  overflow: hidden;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+#app {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  padding-top: env(safe-area-inset-top);
+}
+@supports (height: 100dvh) { #app { height: 100dvh; } }
+
+/* ---------------- 상단 바 ---------------- */
+#topbar {
+  flex: 0 0 auto;
+  height: var(--top-h);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 12px;
+  border-bottom: 1px solid var(--line);
+  background: rgba(11, 15, 28, 0.75);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+#brand { display: flex; align-items: baseline; gap: 8px; flex: 0 0 auto; min-width: 0; }
+#brand b { font-size: 15px; font-weight: 700; letter-spacing: -0.02em; white-space: nowrap; }
+#brand span { font-size: 11px; color: var(--muted); white-space: nowrap; }
+
+#tabs {
+  display: flex;
+  gap: 3px;
+  margin-left: auto;
+  background: rgba(255, 255, 255, 0.045);
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  padding: 3px;
+  flex: 0 1 220px;
+  min-width: 148px;
+}
+
+.tab {
+  flex: 1 1 50%;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  padding: 6px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: color .2s, background .2s;
+  white-space: nowrap;
+  text-align: center;
+}
+.tab.on { background: var(--accent); color: #08101f; }
+
+/* ---------------- 설정 화면 ---------------- */
+.panel { padding: 0; }
+
+.pgroup { margin-bottom: 11px; }
+.pgroup > h3 {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+
+.chips { display: flex; flex-wrap: wrap; gap: 5px; }
+.chip {
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.045);
+  color: var(--ink);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 5px 9px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background .16s, border-color .16s, transform .08s;
+}
+.chip:active { transform: scale(0.96); }
+.chip.on { background: rgba(110, 168, 255, 0.18); border-color: rgba(110, 168, 255, 0.5); }
+
+.region { margin-bottom: 9px; }
+.region-title {
+  display: flex; align-items: center; gap: 7px;
+  font-size: 11.5px; font-weight: 700; color: var(--ink);
+  margin-bottom: 5px;
+}
+.region-title i { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); display: block; }
+.region[data-r="병원체"] .region-title i { background: var(--c-i); }
+.region[data-r="면역"]   .region-title i { background: var(--c-s); }
+.region[data-r="위생"]   .region-title i { background: #a9b4cf; }
+.region[data-r="영양"]   .region-title i { background: #f2c60e; }
+
+.sl { margin-bottom: 4px; }
+.sl > label {
+  display: flex; justify-content: space-between; align-items: baseline; gap: 8px;
+  font-size: 12px; color: var(--ink); margin-bottom: 1px;
+}
+.sl .v {
+  font-variant-numeric: tabular-nums;
+  font-weight: 700; font-size: 12.5px; color: var(--accent);
+  flex: 0 0 auto;
+}
+.sl .hint { font-size: 11px; color: var(--muted); margin-top: 4px; display: none; line-height: 1.45; }
+.sl.open .hint { display: block; }
+.sl .name { cursor: pointer; border-bottom: 1px dotted var(--dim); }
+.sl.pick select { width: 100%; flex: none; margin-top: 4px; }
+.sl.pick { margin-bottom: 10px; }
+
+input[type=range] {
+  -webkit-appearance: none; appearance: none;
+  width: 100%; height: 18px; background: transparent; cursor: pointer; display: block;
+}
+input[type=range]::-webkit-slider-runnable-track {
+  height: 5px; border-radius: 99px;
+  background: linear-gradient(90deg, var(--accent) var(--pct, 50%), rgba(255,255,255,0.10) var(--pct, 50%));
+}
+input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance: none; appearance: none;
+  width: 16px; height: 16px; border-radius: 50%; margin-top: -5.5px;
+  background: #fff; border: 3px solid var(--accent);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.45);
+}
+input[type=range]::-moz-range-track { height: 5px; border-radius: 99px; background: rgba(255,255,255,0.10); }
+input[type=range]::-moz-range-progress { height: 5px; border-radius: 99px; background: var(--accent); }
+input[type=range]::-moz-range-thumb {
+  width: 14px; height: 14px; border-radius: 50%; background: #fff; border: 3px solid var(--accent);
+}
+
+/* ---------------- 무대 ---------------- */
+#stage {
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 9px 9px calc(12px + env(safe-area-inset-bottom));
+}
+.view { display: none; max-width: 760px; margin: 0 auto; }
+.view.on { display: block; animation: fade .25s ease; }
+@keyframes fade { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+.card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  padding: 10px;
+  margin-bottom: 9px;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+.card > h2 {
+  font-size: 12.5px; font-weight: 700; color: var(--ink);
+  margin-bottom: 8px; display: flex; align-items: center; gap: 7px; flex-wrap: wrap;
+}
+.card > h2 small { font-weight: 500; color: var(--muted); font-size: 11px; }
+
+#simWrap {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  max-height: min(56vh, 520px);
+  margin: 0 auto;
+  border-radius: 13px;
+  overflow: hidden;
+  background: radial-gradient(circle at 50% 45%, rgba(78,168,222,0.07), rgba(8,12,22,0.9) 72%);
+  border: 1px solid var(--line);
+  touch-action: none;
+}
+#sim { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+#dayBadge {
+  position: absolute; top: 9px; left: 10px;
+  background: rgba(8, 12, 22, 0.72);
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  padding: 4px 10px;
+  font-size: 12px; font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  backdrop-filter: blur(6px);
+  pointer-events: none;
+}
+
+#legend {
+  position: absolute; left: 8px; bottom: 8px; right: 8px;
+  display: flex; flex-wrap: wrap; gap: 4px 10px;
+  background: rgba(8, 12, 22, 0.6);
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  padding: 5px 9px;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  pointer-events: none;
+}
+.lg { display: inline-flex; align-items: center; gap: 5px; font-size: 10.5px; color: var(--muted); }
+.mk.e { background: var(--c-i); opacity: 0.45; transform: scale(0.72); }
+
+#spd {
+  position: absolute; top: 8px; right: 8px;
+  gap: 3px;
+  background: rgba(8, 12, 22, 0.68);
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  padding: 3px;
+  backdrop-filter: blur(6px);
+}
+#spd .chip {
+  border: 0; background: transparent; padding: 3px 7px;
+  font-size: 11px; border-radius: 6px; color: var(--muted);
+}
+#spd .chip.on { background: rgba(110, 168, 255, 0.22); color: var(--ink); }
+
+.controls { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
+.btn {
+  flex: 1 1 auto;
+  min-width: 92px;
+  border: 1px solid var(--line);
+  background: rgba(255,255,255,0.055);
+  color: var(--ink);
+  font: inherit; font-size: 13px; font-weight: 700;
+  padding: 9px 12px;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background .16s, transform .08s;
+}
+.btn:active { transform: scale(0.975); }
+.btn.primary { background: var(--accent); color: #08101f; border-color: transparent; }
+.btn:disabled { opacity: 0.45; cursor: default; }
+.btn.wide { flex: 1 1 100%; }
+
+#stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; margin-top: 8px; }
+.tile {
+  background: var(--card-2);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  padding: 7px 8px;
+  min-width: 0;
+}
+.tile .k { font-size: 10.5px; color: var(--muted); display: flex; align-items: center; gap: 5px; line-height: 1.3; }
+.tile .n { font-size: 21px; font-weight: 800; font-variant-numeric: tabular-nums; margin-top: 3px; letter-spacing: -0.02em; }
+.tile .sub { font-size: 10px; color: var(--muted); font-variant-numeric: tabular-nums; }
+
+.mk { width: 12px; height: 12px; flex: 0 0 auto; display: inline-block; border-radius: 50%; }
+.mk.s { background: var(--c-s); transform: scale(0.62); }
+.mk.i { background: var(--c-i); box-shadow: 0 0 0 3px rgba(242,134,14,0.25); }
+.mk.r { background: transparent; border: 2.5px solid var(--c-r); }
+.tile.s .n { color: var(--c-s); }
+.tile.i .n { color: var(--c-i); }
+.tile.r .n { color: var(--c-r); }
+
+.chartBox { position: relative; width: 100%; height: 210px; }
+.chartBox.tall { height: 280px; }
+.chartBox canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+
+.row { display: flex; gap: 7px; flex-wrap: wrap; align-items: center; margin-bottom: 7px; }
+.row > label { font-size: 12px; color: var(--muted); flex: 0 0 auto; }
+select, input[type=number] {
+  flex: 1 1 130px;
+  min-width: 0;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid var(--line);
+  color: var(--ink);
+  font: inherit; font-size: 13px;
+  padding: 7px 9px;
+  border-radius: 8px;
+}
+select { appearance: none; -webkit-appearance: none; }
+
+.prog { height: 5px; border-radius: 99px; background: rgba(255,255,255,0.08); overflow: hidden; margin: 10px 0 4px; display: none; }
+.prog.on { display: block; }
+.prog > i { display: block; height: 100%; width: 0%; background: var(--accent); transition: width .12s linear; }
+.progText { font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; min-height: 15px; }
+
+.tbl { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+table { border-collapse: collapse; width: 100%; min-width: 400px; font-size: 12px; }
+th, td { padding: 8px 9px; text-align: left; border-bottom: 1px solid var(--line); white-space: nowrap; }
+th { color: var(--muted); font-weight: 600; font-size: 11px; }
+td { font-variant-numeric: tabular-nums; }
+td.wrap, th.wrap { white-space: normal; min-width: 170px; }
+
+.note { font-size: 11.5px; color: var(--muted); line-height: 1.65; }
+.note b { color: var(--ink); }
+.note + .note { margin-top: 7px; }
+
+.formula {
+  background: rgba(0,0,0,0.28);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 11px 12px;
+  font-size: 11.5px;
+  line-height: 1.85;
+  overflow-x: auto;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  margin-bottom: 10px;
+}
+
+@media (max-width: 860px) {
+  #simWrap { max-height: 50vh; }
+  @supports (max-height: 50dvh) { #simWrap { max-height: min(50dvh, 440px); } }
+  .chartBox { height: 190px; }
+  .chartBox.tall { height: 240px; }
+  #stats { gap: 6px; }
+  .tile { padding: 8px; }
+  .tile .n { font-size: 18px; }
+  .tile .k { font-size: 10px; }
+}
+
+@media (max-width: 400px) {
+  :root { --top-h: 50px; }
+  .tab { padding: 6px 10px; font-size: 12px; }
+  #brand b { font-size: 14px; }
+  .btn { font-size: 12.5px; padding: 10px 12px; min-width: 76px; }
+  .tile .n { font-size: 17px; }
+  .tile .k { font-size: 9.5px; }
+  #stage { padding: 10px 10px calc(14px + env(safe-area-inset-bottom)); }
+  .card { padding: 11px; }
+}
+
+@media (max-height: 560px) and (orientation: landscape) {
+  #simWrap { max-height: 60vh; }
+  .chartBox { height: 160px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
+}
+
+</style>
+</head>
+<body>
+
+<div id="app">
+  <div id="topbar">
+    <div id="brand"><b>문현고 과학R&amp;S 화생방</b></div>
+    <nav id="tabs"></nav>
+  </div>
+  <main id="stage">
+    <section class="view" id="view_observe"></section>
+    <section class="view" id="view_settings"></section>
+  </main>
+</div>
+
+<script>
+/* ===== engine.js ===== */
+/* =====================================================================
+   다변수 감염 확산 시뮬레이션 엔진
+   팀 화생방 / 2026 과학 R&S 심화탐구
+
+   중간보고서에서 정한 10개 변수를 4영역(병원체, 면역, 위생, 영양)으로
+   묶고, 한 번의 접촉에서 감염될 확률을 독립 곱셈 모델로 계산한다.
+
+   화면 그리기와 완전히 분리해 두었기 때문에 브라우저에서도 돌아가고
+   node로도 그대로 돌려서 결과를 검증할 수 있다.
+   ===================================================================== */
+
+/* ---------------------------------------------------------------
+   1. 문헌에서 가져온 효과 크기
+   각 값의 출처는 SOURCES 표에 그대로 적어 두었다.
+   --------------------------------------------------------------- */
+var EFFECT = {
+  mask: 0.53,          // 종류를 가리지 않았을 때의 마스크 효과 (Chu DK et al., Lancet, 2020)
+  distance: 0.82,      // 1 m 이상 거리두기 시 82% 감소 (Chu DK et al., Lancet, 2020)
+  hand: 0.20,          // 손씻기 시 호흡기 감염 약 20% 감소 (Aiello AE et al., AJPH, 2008)
+  vaccine: 0.92,       // mRNA 백신 2차 접종 감염예방 약 92% (CDC MMWR, 2021)
+  micro: 0.12,         // 비타민 D 충분 섭취 시 급성호흡기감염 12% 감소 (Martineau AR et al., BMJ, 2017)
+  malnutrition: 1.5    // 영양 결핍 시 감염 위험 최대 2.5배 (UNICEF/WHO Lancet 영양 시리즈, 2008)
+};
+
+/* ---------------------------------------------------------------
+   2. 변수 10개 정의
+   --------------------------------------------------------------- */
+var VARS = [
+  { key: 'beta',      region: '병원체', name: '감염력',        unit: 'pct',  min: 0.05, max: 0.80, step: 0.01, def: 0.28,
+    desc: '한 번 접촉했을 때 아무 방어 수단이 없다고 볼 때의 기본 전파 확률' },
+  { key: 'toxicity',  region: '병원체', name: '독성',          unit: 'day',  min: 3,    max: 30,   step: 1,    def: 12,
+    desc: '독성이 셀수록 회복까지 오래 걸리고, 그만큼 남을 감염시킬 기간도 길어진다' },
+  { key: 'mutation',  region: '병원체', name: '변이율',        unit: 'pct',  min: 0,    max: 1,    step: 0.01, def: 0.10,
+    desc: '변이가 쌓이면 전파력이 조금씩 오르고 백신 효과는 조금씩 떨어진다' },
+  { key: 'prr',       region: '면역',   name: 'PRR 발현 수준', unit: 'pct',  min: 0,    max: 1,    step: 0.01, def: 0.50,
+    desc: '병원체를 가장 먼저 알아채는 선천면역 수용체가 얼마나 잘 작동하는지' },
+  { key: 'vaccine',   region: '면역',   name: '백신 접종률',   unit: 'pct',  min: 0,    max: 1,    step: 0.01, def: 0.40,
+    desc: '후천면역을 미리 만들어 둔 사람의 비율' },
+  { key: 'mask',      region: '위생',   name: '마스크 착용률', unit: 'pct',  min: 0,    max: 1,    step: 0.01, def: 0.50,
+    desc: '병원체가 몸 안으로 들어오는 것을 막으므로 선천면역의 외부 방어를 돕는다' },
+  { key: 'maskType',  region: '위생',   name: '마스크 종류',   unit: 'pick', min: 0,   max: 5,    step: 1,    def: 0,
+    desc: '어떤 마스크를 쓰느냐에 따라 막아주는 정도가 크게 다르다. 천 마스크는 효과가 확인되지 않았다' },
+  { key: 'distance',  region: '위생',   name: '거리두기 준수율 (1 m 기준)', unit: 'pct', min: 0,   max: 1,    step: 0.01, def: 0.30,
+    desc: '1 m 이상 떨어졌을 때의 효과(82% 감소)를 준수율만큼 반영한다. 더 멀어지면 효과가 커지지만 이 모형은 1 m 만 쓴다' },
+  { key: 'hand',      region: '위생',   name: '손씻기 준수율', unit: 'pct',  min: 0,    max: 1,    step: 0.01, def: 0.50,
+    desc: '접촉을 통한 전파를 줄인다' },
+  { key: 'nutrition', region: '영양',   name: '영양 충족도',   unit: 'pct',  min: 0,    max: 1,    step: 0.01, def: 0.75,
+    desc: '단백질과 열량이 모자라면 면역세포를 제대로 못 만들어 감염에 약해진다' },
+  { key: 'micro',     region: '영양',   name: '미량영양소 충족도', unit: 'pct', min: 0, max: 1,    step: 0.01, def: 0.50,
+    desc: '비타민 D 같은 미량영양소가 충분할수록 호흡기 감염이 줄어든다' }
+];
+
+/* 마스크는 종류에 따라 효과가 크게 갈린다. 착용률과 따로 고를 수 있게 해 둔다.
+   effect 는 감염 확률을 얼마나 깎는지이고, 착용률만큼만 인구에 적용된다.
+
+   basis 는 그 숫자가 어디서 왔는지다. 셋을 반드시 구분해서 써야 한다.
+     meas  실제로 감염 위험을 측정한 연구값
+     weak  측정은 했지만 통계적으로 유의하지 않았다
+     est   감염 위험을 잰 연구가 없어 우리가 추정한 값
+
+   추정은 포집효율 곱하기 (1 빼기 누설률) 로 했다. 이 식을 KF94 에 넣으면 0.84 가
+   나오는데, 실제로 측정된 0.83 과 거의 같아서 나머지 등급에도 같은 식을 썼다.
+   그래도 추정은 추정이다. 보고서에는 반드시 추정값이라고 밝혀야 한다. */
+var MASK_TYPES = [
+  { key: 'mixed',  name: '종류 섞임',   effect: 0.53, basis: 'meas',
+    ref: 'Chu DK et al., Lancet 2020. 종류를 나누지 않은 메타분석 값' },
+  { key: 'cloth',  name: '천 마스크',   effect: 0.56, basis: 'weak',
+    ref: 'Andrejko KL et al., MMWR 2022. aOR 0.44 (95% CI 0.17~1.17). 신뢰구간이 1을 넘어 효과가 있다고 말할 수 없다' },
+  { key: 'dental', name: '덴탈 마스크', effect: 0.66, basis: 'meas',
+    ref: 'Andrejko KL et al., MMWR 2022. 수술용 마스크 aOR 0.34 (95% CI 0.13~0.90)' },
+  { key: 'kf80',   name: 'KF80',       effect: 0.60, basis: 'est',
+    ref: '감염 위험을 직접 잰 연구가 없다. 식약처 기준 포집효율 80%, 누설률 25% 에서 0.80 곱하기 0.75 로 추정' },
+  { key: 'kf94',   name: 'KF94',       effect: 0.83, basis: 'meas',
+    ref: 'Andrejko KL et al., MMWR 2022. N95 / KN95 aOR 0.17 (95% CI 0.05~0.64). KF94 를 같은 등급으로 본 값' },
+  { key: 'kf99',   name: 'KF99',       effect: 0.94, basis: 'est',
+    ref: '감염 위험을 직접 잰 연구가 없다. 식약처 기준 포집효율 99%, 누설률 5% 에서 0.99 곱하기 0.95 로 추정' }
+];
+
+var REGIONS = ['병원체', '면역', '위생', '영양'];
+
+/* 화면에 쓰는 세 상태의 이름. 여기 한 줄만 고치면 전체가 바뀐다.
+   교과서 용어로는 각각 감수성(S), 감염(I), 회복(R) 이다. */
+var LABELS = { S: '정상', I: '감염', R: '회복' };
+
+function defaultParams() {
+  var p = {};
+  for (var i = 0; i < VARS.length; i++) p[VARS[i].key] = VARS[i].def;
+  return p;
+}
+
+/* ---------------------------------------------------------------
+   3. 시나리오 프리셋
+   --------------------------------------------------------------- */
+var SCENARIOS = [
+  { key: 'base',    name: '기본값',      note: '지금 우리가 사는 정도의 평범한 상태',
+    over: {} },
+  { key: 'none',    name: '무대책',      note: '위생 수칙도 백신도 전혀 없는 상태',
+    over: { mask: 0, distance: 0, hand: 0, vaccine: 0 } },
+  { key: 'hygiene', name: '위생 강화',   note: '마스크와 거리두기, 손씻기만 끌어올린 경우',
+    over: { mask: 0.90, distance: 0.80, hand: 0.90, vaccine: 0.40 } },
+  { key: 'vax',     name: '백신 중심',   note: '위생은 그대로 두고 접종률만 높인 경우',
+    over: { mask: 0.50, distance: 0.30, hand: 0.50, vaccine: 0.90 } },
+  { key: 'nutri',   name: '영양 개선',   note: '영양 상태와 미량영양소만 채운 경우',
+    over: { nutrition: 1.0, micro: 1.0 } },
+  { key: 'all',     name: '종합 방역',   note: '위생과 백신, 영양을 한꺼번에 올린 경우',
+    over: { mask: 0.90, distance: 0.80, hand: 0.90, vaccine: 0.90, nutrition: 1.0, micro: 1.0 } }
+];
+
+function scenarioParams(key) {
+  var p = defaultParams();
+  for (var i = 0; i < SCENARIOS.length; i++) {
+    if (SCENARIOS[i].key === key) {
+      var o = SCENARIOS[i].over;
+      for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) p[k] = o[k];
+      return p;
+    }
+  }
+  return p;
+}
+
+/* ---------------------------------------------------------------
+   4. 난수 (seed를 넣으면 같은 결과가 다시 나온다)
+   --------------------------------------------------------------- */
+function makeRandom(seed) {
+  var a = seed >>> 0;
+  return function () {
+    a = (a + 0x6D2B79F5) | 0;
+    var t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+/* ---------------------------------------------------------------
+   5. 감염 확률 계산 (모델의 심장)
+
+   한 번 접촉했을 때 감염되려면 모든 방어 수단을 다 통과해야 하므로,
+   각 방어 수단의 통과 확률을 곱한다.
+   --------------------------------------------------------------- */
+function maskEffect(p) {
+  var t = MASK_TYPES[Math.round(p.maskType) | 0];
+  return (t ? t.effect : EFFECT.mask);
+}
+function prrFactor(prr)           { return 1.4 - 0.8 * prr; }              // 0.6배에서 1.4배
+function nutritionFactor(n)       { return 1 + EFFECT.malnutrition * (1 - n); }  // 1배에서 2.5배
+function microFactor(m)           { return 1 - EFFECT.micro * m; }
+function betaAtDay(beta, mut, d)  { return beta * Math.min(2, 1 + 0.6 * mut * (d / 60)); }
+function vaccineAtDay(mut, d)     { return Math.max(0.30, EFFECT.vaccine * (1 - 0.6 * mut * (d / 60))); }
+
+/* 방어 수단을 모두 통과할 확률. 백신은 개인별로 다르므로 따로 곱한다. */
+function envMultiplier(p) {
+  return (1 - maskEffect(p) * p.mask)
+       * (1 - EFFECT.distance * p.distance)
+       * (1 - EFFECT.hand * p.hand)
+       * prrFactor(p.prr)
+       * nutritionFactor(p.nutrition)
+       * microFactor(p.micro);
+}
+
+/* ---------------------------------------------------------------
+   6. 시뮬레이션 본체
+   --------------------------------------------------------------- */
+/* 상태 네 가지.
+   E 는 병원체가 몸에 들어왔지만 아직 남한테 옮기지는 못하는 잠복 상태다.
+   화면에서는 E 와 I 를 묶어서 감염으로 센다. */
+var S_STATE = 0, E_STATE = 1, I_STATE = 2, R_STATE = 3;
+
+/* 화면에는 안 보이지만 결과 모양을 좌우하는 값들.
+   기본값에서 유행이 대략 반년 남짓 올라갔다가 꺾이도록 맞춰 두었다. */
+var SIM_DEFAULTS = {
+  N: 1000,          // 가상 인구
+  W: 112,           // 활동 공간 한 변
+  contactR: 1.8,    // 이 거리 안에 들어오면 접촉으로 본다
+  mobility: 0.8,    // 기본 활동량. 사람마다 여기에 각자 배수가 곱해진다
+  subSteps: 2,      // 하루에 접촉이 일어나는 횟수
+  maxDays: 360,     // 관찰 기간
+  seeds: 3,         // 최초 감염자 수
+  latent: 6         // 잠복기. 이 기간에는 감염됐지만 아직 남한테 못 옮긴다
+};
+
+function Sim(params, opts) {
+  opts = opts || {};
+  this.p = params;
+  this.N = opts.N || SIM_DEFAULTS.N;
+  this.W = opts.W || SIM_DEFAULTS.W;
+  this.contactR = opts.contactR || SIM_DEFAULTS.contactR;
+  this.mobility = opts.mobility != null ? opts.mobility : SIM_DEFAULTS.mobility;
+  this.subSteps = opts.subSteps || SIM_DEFAULTS.subSteps;
+  this.maxDays = opts.maxDays || SIM_DEFAULTS.maxDays;
+  this.seeds = opts.seeds || SIM_DEFAULTS.seeds;
+  this.latent = opts.latent != null ? opts.latent : SIM_DEFAULTS.latent;
+  this.rand = makeRandom(opts.seed != null ? opts.seed : 12345);
+
+  var N = this.N;
+  this.x = new Float32Array(N);
+  this.y = new Float32Array(N);
+  this.px = new Float32Array(N);   // 한 스텝 전 위치. 화면에서 중간을 채우는 데 쓴다
+  this.py = new Float32Array(N);
+  this.ang = new Float32Array(N);  // 지금 가고 있는 방향
+  this.spd = new Float32Array(N);  // 사람마다 다른 활동량
+  this.status = new Uint8Array(N);
+  this.vacc = new Uint8Array(N);
+  this.timer = new Float32Array(N);
+
+  // 공간 해시 (접촉 상대를 빠르게 찾기 위한 격자)
+  this.cell = this.contactR;
+  this.gw = Math.ceil(this.W / this.cell) + 1;
+  this.head = new Int32Array(this.gw * this.gw);
+  this.next = new Int32Array(N);
+
+  this.newInfections = [];   // 이번 스텝에 새로 감염된 사람 (화면 효과용)
+  this.reset();
+}
+
+Sim.prototype.reset = function () {
+  var N = this.N, W = this.W, r = this.rand;
+  for (var i = 0; i < N; i++) {
+    this.x[i] = this.px[i] = r() * W;
+    this.y[i] = this.py[i] = r() * W;
+    this.ang[i] = r() * Math.PI * 2;
+    /* 대부분은 집 근처에만 머물고 일부만 멀리 돌아다닌다.
+       제곱을 씌워서 활발한 사람이 드물게 나오도록 치우친 분포를 만든다. */
+    this.spd[i] = 0.25 + 2.6 * r() * r();
+    this.status[i] = S_STATE;
+    this.vacc[i] = r() < this.p.vaccine ? 1 : 0;
+    this.timer[i] = 0;
+  }
+  // 최초 감염자
+  var seeded = 0;
+  while (seeded < this.seeds) {
+    var idx = (r() * N) | 0;
+    if (this.status[idx] === S_STATE) { this.status[idx] = I_STATE; this.timer[idx] = 0; seeded++; }
+  }
+  this.day = 0;
+  this.sub = 0;
+  this.totalInfected = seeded;
+  this.peakI = seeded;
+  this.peakDay = 0;
+  this.endDay = -1;
+  this.history = { day: [0], S: [N - seeded], I: [seeded], R: [0] };
+  this.newInfections.length = 0;
+  this.env = envMultiplier(this.p);
+};
+
+Sim.prototype.buildGrid = function () {
+  var head = this.head, next = this.next, N = this.N, gw = this.gw, cell = this.cell;
+  head.fill(-1);
+  for (var i = 0; i < N; i++) {
+    var gx = (this.x[i] / cell) | 0;
+    var gy = (this.y[i] / cell) | 0;
+    var c = gy * gw + gx;
+    next[i] = head[c];
+    head[c] = i;
+  }
+};
+
+/* 하루의 일부(sub step) 진행. 화면 애니메이션은 이 단위로 그린다. */
+Sim.prototype.subStep = function () {
+  var N = this.N, W = this.W, r = this.rand;
+  var mob = this.mobility;
+
+  this.newInfections.length = 0;
+
+  /* 이동
+     사람마다 활동량이 다르고, 가던 방향을 어느 정도 이어 간다.
+     가끔 방향을 완전히 틀어서 한곳에 갇히지 않게 한다. */
+  for (var i = 0; i < N; i++) {
+    var ox = this.x[i], oy = this.y[i];
+
+    var ang = this.ang[i] + (r() - 0.5) * 1.6;
+    if (r() < 0.06) ang = r() * Math.PI * 2;
+
+    var len = mob * this.spd[i] * (0.55 + r() * 0.9);
+    var nx = ox + Math.cos(ang) * len;
+    var ny = oy + Math.sin(ang) * len;
+
+    if (nx < 0) { nx = -nx; ang = Math.PI - ang; }
+    else if (nx > W) { nx = 2 * W - nx; ang = Math.PI - ang; }
+    if (ny < 0) { ny = -ny; ang = -ang; }
+    else if (ny > W) { ny = 2 * W - ny; ang = -ang; }
+
+    this.ang[i] = ang;
+    this.px[i] = ox; this.py[i] = oy;
+    this.x[i] = nx; this.y[i] = ny;
+  }
+
+  // 접촉과 감염
+  this.buildGrid();
+  var beta = betaAtDay(this.p.beta, this.p.mutation, this.day);
+  var vEff = vaccineAtDay(this.p.mutation, this.day);
+  var pBase = beta * this.env;
+  var pVacc = pBase * (1 - vEff);
+  var R2 = this.contactR * this.contactR;
+  var gw = this.gw, cell = this.cell, head = this.head, next = this.next;
+
+  for (var a = 0; a < N; a++) {
+    if (this.status[a] !== I_STATE) continue;
+    var ax = this.x[a], ay = this.y[a];
+    var cx = (ax / cell) | 0, cy = (ay / cell) | 0;
+    for (var dx = -1; dx <= 1; dx++) {
+      var gx = cx + dx;
+      if (gx < 0 || gx >= gw) continue;
+      for (var dy = -1; dy <= 1; dy++) {
+        var gy = cy + dy;
+        if (gy < 0 || gy >= gw) continue;
+        for (var b = head[gy * gw + gx]; b !== -1; b = next[b]) {
+          if (this.status[b] !== S_STATE) continue;
+          var ddx = ax - this.x[b], ddy = ay - this.y[b];
+          if (ddx * ddx + ddy * ddy > R2) continue;
+          var p = this.vacc[b] ? pVacc : pBase;
+          if (r() < p) {
+            this.status[b] = E_STATE;      // 바로 옮기지는 못하고 잠복기부터 시작
+            this.timer[b] = 0;
+            this.totalInfected++;
+            if (this.newInfections.length < 80) this.newInfections.push(b);
+          }
+        }
+      }
+    }
+  }
+
+  // 잠복기가 끝나면 남한테 옮길 수 있게 되고, 회복 기간이 지나면 낫는다
+  var dt = 1 / this.subSteps;
+  for (var c2 = 0; c2 < N; c2++) {
+    var st = this.status[c2];
+    if (st === E_STATE) {
+      this.timer[c2] += dt;
+      if (this.timer[c2] >= this.latent) { this.status[c2] = I_STATE; this.timer[c2] = 0; }
+    } else if (st === I_STATE) {
+      this.timer[c2] += dt;
+      if (this.timer[c2] >= this.p.toxicity) this.status[c2] = R_STATE;
+    }
+  }
+
+  this.sub++;
+  if (this.sub >= this.subSteps) {
+    this.sub = 0;
+    this.day++;
+    this.record();
+  }
+  return this;
+};
+
+/* I 는 잠복 중인 사람까지 합친 수. 화면에는 이 값을 감염으로 보여준다. */
+Sim.prototype.counts = function () {
+  var S = 0, Ex = 0, In = 0, R = 0, N = this.N;
+  for (var i = 0; i < N; i++) {
+    var s = this.status[i];
+    if (s === S_STATE) S++;
+    else if (s === E_STATE) Ex++;
+    else if (s === I_STATE) In++;
+    else R++;
+  }
+  return { S: S, E: Ex, spreading: In, I: Ex + In, R: R };
+};
+
+Sim.prototype.record = function () {
+  var c = this.counts();
+  this.history.day.push(this.day);
+  this.history.S.push(c.S);
+  this.history.I.push(c.I);
+  this.history.R.push(c.R);
+  if (c.I > this.peakI) { this.peakI = c.I; this.peakDay = this.day; }
+  if (c.I === 0 && this.endDay < 0) this.endDay = this.day;
+  return c;
+};
+
+Sim.prototype.done = function () {
+  return this.endDay >= 0 || this.day >= this.maxDays;
+};
+
+/* 화면 없이 끝까지 돌려서 요약 지표만 뽑는다 */
+function runOnce(params, opts) {
+  var sim = new Sim(params, opts);
+  while (!sim.done()) sim.subStep();
+  var c = sim.counts();
+  return {
+    attackRate: sim.totalInfected / sim.N,   // 총 감염률
+    peakRate: sim.peakI / sim.N,             // 최대 동시 감염률
+    peakDay: sim.peakDay,
+    endDay: sim.endDay >= 0 ? sim.endDay : sim.maxDays,
+    finalS: c.S
+  };
+}
+
+/* 같은 조건으로 여러 번 돌려 평균과 표준편차를 낸다.
+   확률 모형이라 한 번 돌린 값은 결과로 쓸 수 없다. */
+function runRepeats(params, reps, opts, seed0) {
+  opts = opts || {};
+  seed0 = seed0 || 1000;
+  var keys = ['attackRate', 'peakRate', 'peakDay', 'endDay'];
+  var acc = {}, i, k;
+  for (k = 0; k < keys.length; k++) acc[keys[k]] = [];
+  for (i = 0; i < reps; i++) {
+    var o = {};
+    for (var kk in opts) if (Object.prototype.hasOwnProperty.call(opts, kk)) o[kk] = opts[kk];
+    o.seed = seed0 + i * 7919;
+    var res = runOnce(params, o);
+    for (k = 0; k < keys.length; k++) acc[keys[k]].push(res[keys[k]]);
+  }
+  var out = { reps: reps, raw: acc };
+  for (k = 0; k < keys.length; k++) {
+    var arr = acc[keys[k]], n = arr.length, sum = 0, j;
+    for (j = 0; j < n; j++) sum += arr[j];
+    var mean = sum / n, v = 0;
+    for (j = 0; j < n; j++) v += (arr[j] - mean) * (arr[j] - mean);
+    out[keys[k]] = { mean: mean, sd: n > 1 ? Math.sqrt(v / (n - 1)) : 0 };
+  }
+  return out;
+}
+
+/* ---------------------------------------------------------------
+   7. 출처 표
+   --------------------------------------------------------------- */
+var SOURCES = [
+  { item: '마스크 착용', value: '전파 53% 감소', ref: 'Chu DK et al., Lancet 395:1973, 2020 (메타분석)' },
+  { item: '거리두기 1 m 이상', value: '82% 감소', ref: 'Chu DK et al., Lancet 395:1973, 2020 (메타분석)' },
+  { item: '마스크 종류별 효과', value: 'N95 / KN95 83% 감소, 수술용 66% 감소, 천 마스크는 유의하지 않음', ref: 'Andrejko KL et al., MMWR 71:212, 2022 (캘리포니아 사례대조)' },
+  { item: 'KF 등급 기준', value: '포집효율 KF80 80%, KF94 94%, KF99 99% 이상 / 누설률 25%, 11%, 5% 이하', ref: '식품의약품안전처 보건용 마스크 기준규격' },
+  { item: '손씻기', value: '호흡기 감염 약 20% 감소', ref: 'Aiello AE et al., Am J Public Health 98:1372, 2008' },
+  { item: 'mRNA 백신 2차 접종', value: '감염 예방 약 92%', ref: 'CDC MMWR 70:495, 2021' },
+  { item: '비타민 D 충분 섭취', value: '급성 호흡기 감염 12% 감소', ref: 'Martineau AR et al., BMJ 356:i6583, 2017 (메타분석)' },
+  { item: '영양 결핍', value: '감염 위험 최대 2.5배', ref: 'UNICEF/WHO, Lancet 영양과 면역 시리즈, 2008' },
+  { item: '감염병 수리 모델의 기본 틀', value: 'SIR 구획 모형', ref: 'Kermack WO, McKendrick AG, Proc R Soc A 115:700, 1927' },
+  { item: '선천면역과 후천면역 개념', value: 'PRR, 항원 제시, 기억세포', ref: '고등학교 생명과학 II 교과서 III단원' },
+  { item: '3변수 시뮬레이션 원형', value: '마스크, 거리두기, 백신', ref: '팀원 방학숙제, 2026.02' }
+];
+
+/* 값 표시 형식 */
+function formatValue(key, v) {
+  if (key === 'maskType') {
+    var t = MASK_TYPES[Math.round(v) | 0];
+    return t ? t.name : '종류 섞임';
+  }
+  if (key === 'toxicity') return Math.round(v) + '일';
+  return Math.round(v * 100) + '%';
+}
+
+/* 다른 모듈은 모두 이 E 하나로만 엔진에 접근한다 */
+var E = {
+  EFFECT: EFFECT, VARS: VARS, REGIONS: REGIONS, SCENARIOS: SCENARIOS, SOURCES: SOURCES, LABELS: LABELS,
+  MASK_TYPES: MASK_TYPES, maskEffect: maskEffect,
+  SIM_DEFAULTS: SIM_DEFAULTS,
+  defaultParams: defaultParams, scenarioParams: scenarioParams,
+  Sim: Sim, runOnce: runOnce, runRepeats: runRepeats,
+  envMultiplier: envMultiplier, formatValue: formatValue, makeRandom: makeRandom,
+  prrFactor: prrFactor, nutritionFactor: nutritionFactor, microFactor: microFactor
+};
+
+
+
+
+/* ===== charts.js ===== */
+/* =====================================================================
+   차트
+   외부 라이브러리 없이 캔버스에 직접 그린다. 파일 하나로 어디서나
+   열리게 하려는 목적이고, 인터넷이 끊겨도 그래프가 그대로 나온다.
+
+   선은 색만이 아니라 굵기와 실선, 점선으로도 구분한다.
+   ===================================================================== */
+
+var Charts = (function () {
+
+  function css(name) {
+    return getComputedStyle(document.body).getPropertyValue(name).trim() || '#888';
+  }
+
+  /* 캔버스를 화면 크기와 화소 밀도에 맞춘다 */
+  function fit(cv) {
+    var dpr = Math.min(window.devicePixelRatio || 1, 2);
+    var r = cv.getBoundingClientRect();
+    var w = Math.max(1, Math.round(r.width)), h = Math.max(1, Math.round(r.height));
+    if (cv.width !== w * dpr || cv.height !== h * dpr) {
+      cv.width = w * dpr; cv.height = h * dpr;
+    }
+    var ctx = cv.getContext('2d');
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, w, h);
+    return { ctx: ctx, w: w, h: h };
+  }
+
+  function niceMax(v) {
+    if (v <= 0) return 1;
+    var p = Math.pow(10, Math.floor(Math.log10(v)));
+    var n = v / p;
+    var m = n <= 1 ? 1 : n <= 2 ? 2 : n <= 2.5 ? 2.5 : n <= 5 ? 5 : 10;
+    return m * p;
+  }
+
+  function axes(ctx, box, xMax, yMax, xUnit, yFmt) {
+    ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+    ctx.lineWidth = 1;
+    ctx.fillStyle = css('--muted');
+    ctx.font = '10px system-ui, sans-serif';
+
+    var i, ticks = 4;
+    for (i = 0; i <= ticks; i++) {
+      var y = box.t + box.h - (box.h * i / ticks);
+      ctx.beginPath();
+      ctx.moveTo(box.l, y + 0.5); ctx.lineTo(box.l + box.w, y + 0.5);
+      ctx.stroke();
+      ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+      ctx.fillText(yFmt(yMax * i / ticks), box.l - 6, y);
+    }
+    ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+    for (i = 0; i <= 4; i++) {
+      var x = box.l + box.w * i / 4;
+      ctx.fillText(Math.round(xMax * i / 4) + (i === 4 ? xUnit : ''), x, box.t + box.h + 6);
+    }
+  }
+
+  /* -------------------------------------------------------------
+     하루하루의 정상, 감염, 회복 인원 변화
+     ------------------------------------------------------------- */
+  function seir(cv, hist, N, mode) {
+    var f = fit(cv), ctx = f.ctx;
+    var box = { l: 40, t: 12, w: f.w - 52, h: f.h - 34 };
+    if (box.w <= 10 || box.h <= 10) return;
+
+    var days = hist.day, n = days.length, i;
+    var xMax = Math.max(20, days[n - 1]);
+
+    var series;
+    if (mode === 'infected') {
+      series = [{ data: hist.I, color: css('--c-i'), lw: 3, dash: [], name: E.LABELS.I, fill: 0.28 }];
+    } else {
+      series = [
+        { data: hist.S, color: css('--c-s'), lw: 2,   dash: [],     name: E.LABELS.S, fill: 0.13 },
+        { data: hist.R, color: css('--c-r'), lw: 1.6, dash: [5, 4], name: E.LABELS.R, fill: 0 },
+        { data: hist.I, color: css('--c-i'), lw: 3,   dash: [],     name: E.LABELS.I, fill: 0.26 }
+      ];
+    }
+
+    /* 세로축은 지금 그리는 값에 맞춰 자동으로 잡는다.
+       고정해 두면 감염 곡선이 바닥에 깔려서 안 보인다. */
+    var dataMax = 1;
+    series.forEach(function (s) {
+      for (i = 0; i < s.data.length; i++) if (s.data[i] > dataMax) dataMax = s.data[i];
+    });
+    var yMax = Math.min(N, niceMax(dataMax * 1.12));
+
+    axes(ctx, box, xMax, yMax, '일', function (v) { return Math.round(v); });
+
+    function px(i) { return box.l + (days[i] / xMax) * box.w; }
+    function py(v) { return box.t + box.h - (v / yMax) * box.h; }
+
+    series.forEach(function (s) {
+      if (s.fill) {
+        ctx.beginPath();
+        ctx.moveTo(px(0), box.t + box.h);
+        for (i = 0; i < n; i++) ctx.lineTo(px(i), py(s.data[i]));
+        ctx.lineTo(px(n - 1), box.t + box.h);
+        ctx.closePath();
+        ctx.globalAlpha = s.fill;
+        ctx.fillStyle = s.color;
+        ctx.fill();
+        ctx.globalAlpha = 1;
+      }
+      ctx.beginPath();
+      for (i = 0; i < n; i++) {
+        if (i === 0) ctx.moveTo(px(i), py(s.data[i])); else ctx.lineTo(px(i), py(s.data[i]));
+      }
+      ctx.setLineDash(s.dash);
+      ctx.strokeStyle = s.color;
+      ctx.lineWidth = s.lw;
+      ctx.lineJoin = 'round';
+      ctx.stroke();
+      ctx.setLineDash([]);
+    });
+
+    /* 선 끝에 이름을 직접 붙인다 */
+    ctx.font = '600 10.5px system-ui, sans-serif';
+    ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+    var used = [];
+    series.forEach(function (s) {
+      var y = py(s.data[n - 1]);
+      for (var k = 0; k < used.length; k++) if (Math.abs(used[k] - y) < 12) y = used[k] + 12;
+      used.push(y);
+      y = Math.max(box.t + 6, Math.min(box.t + box.h - 6, y));
+      ctx.fillStyle = s.color;
+      ctx.fillText(s.name, box.l + box.w - 2, y);
+    });
+  }
+
+  /* -------------------------------------------------------------
+     변수 하나를 훑었을 때의 결과. 평균에 오차막대를 같이 그린다.
+     ------------------------------------------------------------- */
+  function sweep(cv, points, opts) {
+    opts = opts || {};
+    var f = fit(cv), ctx = f.ctx;
+    var box = { l: 40, t: 12, w: f.w - 52, h: f.h - 40 };
+    if (box.w <= 10 || box.h <= 10 || !points.length) return;
+
+    var maxY = 0;
+    points.forEach(function (p) { maxY = Math.max(maxY, p.mean + p.sd); });
+    maxY = Math.min(1, niceMax(maxY));
+    if (maxY <= 0) maxY = 1;
+
+    var xs = points.map(function (p) { return p.x; });
+    var xMin = Math.min.apply(null, xs), xMax = Math.max.apply(null, xs);
+    if (xMax === xMin) xMax = xMin + 1;
+
+    ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+    ctx.fillStyle = css('--muted');
+    ctx.font = '10px system-ui, sans-serif';
+    var i;
+    for (i = 0; i <= 4; i++) {
+      var gy = box.t + box.h - box.h * i / 4;
+      ctx.beginPath(); ctx.moveTo(box.l, gy + 0.5); ctx.lineTo(box.l + box.w, gy + 0.5); ctx.stroke();
+      ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+      ctx.fillText(Math.round(maxY * i / 4 * 100) + '%', box.l - 6, gy);
+    }
+
+    function px(v) { return box.l + ((v - xMin) / (xMax - xMin)) * box.w; }
+    function py(v) { return box.t + box.h - (v / maxY) * box.h; }
+
+    ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+    points.forEach(function (p, idx) {
+      if (points.length > 7 && idx % 2 === 1) return;
+      ctx.fillStyle = css('--muted');
+      ctx.fillText(opts.fmtX ? opts.fmtX(p.x) : p.x, px(p.x), box.t + box.h + 7);
+    });
+
+    /* 오차막대 */
+    ctx.strokeStyle = css('--c-s');
+    ctx.globalAlpha = 0.55;
+    ctx.lineWidth = 1.4;
+    points.forEach(function (p) {
+      var x = px(p.x), a = py(Math.min(maxY, p.mean + p.sd)), b = py(Math.max(0, p.mean - p.sd));
+      ctx.beginPath();
+      ctx.moveTo(x, a); ctx.lineTo(x, b);
+      ctx.moveTo(x - 4, a); ctx.lineTo(x + 4, a);
+      ctx.moveTo(x - 4, b); ctx.lineTo(x + 4, b);
+      ctx.stroke();
+    });
+    ctx.globalAlpha = 1;
+
+    /* 평균선 */
+    ctx.beginPath();
+    points.forEach(function (p, idx) {
+      var x = px(p.x), y = py(p.mean);
+      if (idx === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    });
+    ctx.strokeStyle = css('--c-i');
+    ctx.lineWidth = 2.6;
+    ctx.lineJoin = 'round';
+    ctx.stroke();
+
+    points.forEach(function (p) {
+      ctx.beginPath();
+      ctx.arc(px(p.x), py(p.mean), 3.6, 0, Math.PI * 2);
+      ctx.fillStyle = css('--c-i');
+      ctx.fill();
+      ctx.lineWidth = 1.6;
+      ctx.strokeStyle = 'rgba(8,12,22,0.9)';
+      ctx.stroke();
+    });
+
+    ctx.fillStyle = css('--muted');
+    ctx.font = '10px system-ui, sans-serif';
+    ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+    ctx.fillText(opts.xLabel || '', box.l, 0);
+  }
+
+  /* -------------------------------------------------------------
+     시나리오별 막대 비교
+     ------------------------------------------------------------- */
+  function bars(cv, items) {
+    var f = fit(cv), ctx = f.ctx;
+    var box = { l: 40, t: 12, w: f.w - 50, h: f.h - 44 };
+    if (box.w <= 10 || box.h <= 10 || !items.length) return;
+
+    var maxY = 0;
+    items.forEach(function (it) { maxY = Math.max(maxY, it.mean + it.sd); });
+    maxY = Math.min(1, niceMax(maxY));
+    if (maxY <= 0) maxY = 1;
+
+    ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+    ctx.font = '10px system-ui, sans-serif';
+    var i;
+    for (i = 0; i <= 4; i++) {
+      var gy = box.t + box.h - box.h * i / 4;
+      ctx.beginPath(); ctx.moveTo(box.l, gy + 0.5); ctx.lineTo(box.l + box.w, gy + 0.5); ctx.stroke();
+      ctx.fillStyle = css('--muted');
+      ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+      ctx.fillText(Math.round(maxY * i / 4 * 100) + '%', box.l - 6, gy);
+    }
+
+    var slot = box.w / items.length;
+    var bw = Math.min(46, slot * 0.56);
+
+    items.forEach(function (it, idx) {
+      var cx = box.l + slot * (idx + 0.5);
+      var h = (it.mean / maxY) * box.h;
+      var y = box.t + box.h - h;
+
+      var g = ctx.createLinearGradient(0, y, 0, box.t + box.h);
+      g.addColorStop(0, css('--c-i'));
+      g.addColorStop(1, 'rgba(242,134,14,0.28)');
+      ctx.fillStyle = g;
+      var r = Math.min(6, bw / 2);
+      ctx.beginPath();
+      ctx.moveTo(cx - bw / 2, box.t + box.h);
+      ctx.lineTo(cx - bw / 2, y + r);
+      ctx.quadraticCurveTo(cx - bw / 2, y, cx - bw / 2 + r, y);
+      ctx.lineTo(cx + bw / 2 - r, y);
+      ctx.quadraticCurveTo(cx + bw / 2, y, cx + bw / 2, y + r);
+      ctx.lineTo(cx + bw / 2, box.t + box.h);
+      ctx.closePath();
+      ctx.fill();
+
+      /* 오차막대 */
+      var a = box.t + box.h - Math.min(box.h, ((it.mean + it.sd) / maxY) * box.h);
+      var b = box.t + box.h - Math.max(0, ((it.mean - it.sd) / maxY) * box.h);
+      ctx.strokeStyle = 'rgba(255,255,255,0.55)';
+      ctx.lineWidth = 1.3;
+      ctx.beginPath();
+      ctx.moveTo(cx, a); ctx.lineTo(cx, b);
+      ctx.moveTo(cx - 4, a); ctx.lineTo(cx + 4, a);
+      ctx.moveTo(cx - 4, b); ctx.lineTo(cx + 4, b);
+      ctx.stroke();
+
+      ctx.fillStyle = css('--ink');
+      ctx.font = '700 10.5px system-ui, sans-serif';
+      ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+      ctx.fillText(Math.round(it.mean * 100) + '%', cx, y - 7);
+
+      ctx.fillStyle = css('--muted');
+      ctx.font = '10px system-ui, sans-serif';
+      ctx.textBaseline = 'top';
+      var name = it.name;
+      if (slot < 52 && name.length > 4) name = name.slice(0, 4);
+      ctx.fillText(name, cx, box.t + box.h + 7);
+    });
+  }
+
+  return { seir: seir, sweep: sweep, bars: bars, fit: fit };
+})();
+
+
+/* ===== panel.js ===== */
+/* =====================================================================
+   설정 패널
+   넓은 화면에서는 왼쪽에 붙고, 좁은 화면에서는 아래에서 올라온다.
+   프리셋과 저장, 되돌리기를 여기서 처리한다.
+   ===================================================================== */
+
+var Panel = (function () {
+
+  var KEY = 'hwasaengbang.params.v1';
+  var els = {};       // key 별 슬라이더와 값 표시
+  var onChange = null;
+
+  function pctOf(v, def) {
+    return ((v.val - def.min) / (def.max - def.min)) * 100;
+  }
+
+  function syncOne(key) {
+    var d = els[key];
+    if (!d) return;
+    var v = App.params[key];
+    if (d.def.unit === 'pick') {
+      d.input.value = String(Math.round(v));
+      var t = E.MASK_TYPES[Math.round(v) | 0];
+      if (d.ref && t) {
+        d.ref.textContent = '감염 확률 ' + Math.round(t.effect * 100) + '% 감소. ' + t.ref;
+      }
+      return;
+    }
+    d.input.value = v;
+    d.val.textContent = E.formatValue(key, v);
+    d.input.style.setProperty('--pct', (((v - d.def.min) / (d.def.max - d.def.min)) * 100) + '%');
+  }
+
+  function syncAll() {
+    for (var k in els) if (Object.prototype.hasOwnProperty.call(els, k)) syncOne(k);
+    markActiveChip();
+  }
+
+  /* 지금 값이 어느 프리셋과 같은지 표시 */
+  function markActiveChip() {
+    var chips = document.querySelectorAll('#presets .chip');
+    for (var i = 0; i < chips.length; i++) {
+      var key = chips[i].dataset.sc;
+      if (!key) continue;
+      var p = E.scenarioParams(key), same = true;
+      for (var k in p) {
+        if (Math.abs(p[k] - App.params[k]) > 1e-9) { same = false; break; }
+      }
+      chips[i].classList.toggle('on', same);
+    }
+  }
+
+  function build(panel, opts) {
+    onChange = opts.onChange;
+    panel.classList.add('panel');   /* id 는 view_settings 그대로 둔다. 덮어쓰면 탭 전환이 깨진다 */
+
+    var html = '';
+
+    /* 실행 조건. 자주 건드리므로 맨 위에 둔다 */
+    html += '<div class="pgroup"><h3>실행 조건</h3>' +
+      '<div class="row"><label>기간</label><select id="selDays">' +
+      '<option value="180">180일</option>' +
+      '<option value="360" selected>360일</option>' +
+      '<option value="540">540일</option>' +
+      '</select>' +
+      '<label>인구</label><select id="selN">' +
+      '<option value="500">500명</option>' +
+      '<option value="1000" selected>1,000명</option>' +
+      '<option value="2000">2,000명</option>' +
+      '</select></div>' +
+      '<div class="row"><label>표시</label><select id="selPal">' +
+      '<option value="def">기본</option>' +
+      '<option value="hc">고대비</option>' +
+      '</select></div></div>';
+
+    /* 프리셋 */
+    html += '<div class="pgroup"><h3>상황 골라보기</h3><div class="chips" id="presets">';
+    E.SCENARIOS.forEach(function (s) {
+      html += '<button class="chip" type="button" data-sc="' + s.key + '" title="' + s.note + '">' + s.name + '</button>';
+    });
+    html += '</div></div>';
+
+    /* 변수 슬라이더 */
+    E.REGIONS.forEach(function (reg) {
+      html += '<div class="region" data-r="' + reg + '"><div class="region-title"><i></i>' + reg + '</div>';
+      E.VARS.filter(function (v) { return v.region === reg; }).forEach(function (v) {
+        if (v.unit === 'pick') {
+          /* 고르는 변수는 슬라이더 대신 드롭다운으로 낸다 */
+          var opts = '';
+          E.MASK_TYPES.forEach(function (t, i) {
+            var tag = (t.basis === 'weak') ? ' (근거 불충분)'
+                    : (t.basis === 'est')  ? ' (추정값)' : '';
+            opts += '<option value="' + i + '">' + t.name + tag + '</option>';
+          });
+          html += '<div class="sl pick" data-k="' + v.key + '">' +
+            '<label><span class="name">' + v.name + '</span></label>' +
+            '<select id="i_' + v.key + '">' + opts + '</select>' +
+            '<div class="hint">' + v.desc + '</div>' +
+            '<div class="note" id="r_' + v.key + '" style="margin-top:6px"></div>' +
+            '</div>';
+          return;
+        }
+        html += '<div class="sl" data-k="' + v.key + '">' +
+          '<label><span class="name">' + v.name + '</span><span class="v" id="v_' + v.key + '"></span></label>' +
+          '<input type="range" id="i_' + v.key + '" min="' + v.min + '" max="' + v.max + '" step="' + v.step + '">' +
+          '<div class="hint">' + v.desc + '</div>' +
+          '</div>';
+      });
+      html += '</div>';
+    });
+
+    /* 저장 */
+    html += '<div class="pgroup"><h3>내 설정</h3><div class="chips">' +
+      '<button class="chip" type="button" id="btnSave">저장</button>' +
+      '<button class="chip" type="button" id="btnLoad">불러오기</button>' +
+      '<button class="chip" type="button" id="btnReset">처음값</button>' +
+      '</div><div class="note" id="saveMsg" style="margin-top:7px"></div></div>';
+
+    panel.innerHTML = html;
+
+    /* 슬라이더 연결 */
+    E.VARS.forEach(function (v) {
+      var input = document.getElementById('i_' + v.key);
+      els[v.key] = {
+        input: input,
+        val: document.getElementById('v_' + v.key),
+        ref: document.getElementById('r_' + v.key),
+        def: v
+      };
+      input.addEventListener(v.unit === 'pick' ? 'change' : 'input', function () {
+        App.params[v.key] = parseFloat(input.value);
+        syncOne(v.key);
+        markActiveChip();
+        if (onChange) onChange(v.key);
+      });
+    });
+
+    /* 변수 이름을 누르면 설명이 펼쳐진다 */
+    panel.addEventListener('click', function (e) {
+      var t = e.target;
+      if (t.classList && t.classList.contains('name')) {
+        t.closest('.sl').classList.toggle('open');
+      }
+    });
+
+    /* 프리셋 */
+    document.getElementById('presets').addEventListener('click', function (e) {
+      var b = e.target.closest('.chip');
+      if (!b) return;
+      var p = E.scenarioParams(b.dataset.sc);
+      for (var k in p) App.params[k] = p[k];
+      syncAll();
+      if (onChange) onChange('preset');
+    });
+
+    document.getElementById('selN').addEventListener('change', function () {
+      App.N = parseInt(this.value, 10);
+      if (onChange) onChange('N');
+    });
+
+    document.getElementById('selDays').addEventListener('change', function () {
+      App.maxDays = parseInt(this.value, 10);
+      if (onChange) onChange('maxDays');
+    });
+
+    document.getElementById('selPal').addEventListener('change', function () {
+      document.body.classList.toggle('hc', this.value === 'hc');
+      try { localStorage.setItem('hwasaengbang.pal', this.value); } catch (err) {}
+      if (onChange) onChange('palette');
+    });
+
+    var msg = document.getElementById('saveMsg');
+    function say(t) { msg.textContent = t; setTimeout(function () { msg.textContent = ''; }, 2200); }
+
+    document.getElementById('btnSave').addEventListener('click', function () {
+      try {
+        localStorage.setItem(KEY, JSON.stringify({ params: App.params, N: App.N, maxDays: App.maxDays, speed: App.speed }));
+        say('저장했습니다. 다음에 열면 불러오기로 그대로 씁니다.');
+      } catch (err) { say('저장이 안 됩니다. 브라우저 설정을 확인해 주세요.'); }
+    });
+
+    document.getElementById('btnLoad').addEventListener('click', function () {
+      if (!load()) { say('저장해 둔 설정이 없습니다.'); return; }
+      syncAll();
+      syncSelects();
+      if (onChange) onChange('load');
+      say('불러왔습니다.');
+    });
+
+    document.getElementById('btnReset').addEventListener('click', function () {
+      App.params = E.defaultParams();
+      App.N = E.SIM_DEFAULTS.N;
+      App.maxDays = E.SIM_DEFAULTS.maxDays;
+      App.speed = 2;
+      syncAll();
+      syncSelects();
+      if (onChange) onChange('reset');
+      say('처음값으로 되돌렸습니다.');
+    });
+
+    /* 저장된 팔레트 */
+    try {
+      var pal = localStorage.getItem('hwasaengbang.pal');
+      if (pal) {
+        document.getElementById('selPal').value = pal;
+        document.body.classList.toggle('hc', pal === 'hc');
+      }
+    } catch (err) {}
+
+    syncAll();
+  }
+
+  function syncSelects() {
+    document.getElementById('selN').value = String(App.N);
+    document.getElementById('selDays').value = String(App.maxDays);
+  }
+
+  function load() {
+    try {
+      var raw = localStorage.getItem(KEY);
+      if (!raw) return false;
+      var o = JSON.parse(raw);
+      if (o && o.params) {
+        var d = E.defaultParams();
+        for (var k in d) App.params[k] = (typeof o.params[k] === 'number') ? o.params[k] : d[k];
+      }
+      if (o && o.N) App.N = o.N;
+      if (o && o.maxDays) App.maxDays = o.maxDays;
+      if (o && o.speed) App.speed = o.speed;
+      return true;
+    } catch (err) { return false; }
+  }
+
+  return { build: build, sync: syncAll, syncSelects: syncSelects };
+})();
+
+
+/* ===== observe.js ===== */
+/* =====================================================================
+   관찰 모드
+   사람 하나하나가 움직이면서 병이 퍼지는 모습을 보여준다.
+
+   부드럽게 보이는 요령이 두 가지 있다.
+   하나는 시뮬레이션 한 걸음과 다음 걸음 사이를 화면에서 채워 주는 것.
+   다른 하나는 감염자의 빛을 겹쳐 쌓아서 모인 곳이 더 밝아지게 하는 것.
+   ===================================================================== */
+
+var Observe = (function () {
+
+  var sim = null, running = false;
+  var wrap, cv, ctx, dayBadge, chartCv;
+  var sprites = null, spriteKey = '';
+  var waves = [];
+  var acc = 0, last = 0, raf = 0, clock = 0;
+  var dirtyChart = true;
+  var chartMode = 'infected';
+
+  var STEP_MS = 100;   // 이 간격마다 시뮬레이션이 반 나절 진행된다
+
+  /* ---------------------------------------------------------------
+     화면 만들기
+     --------------------------------------------------------------- */
+  function mount(el) {
+    el.innerHTML =
+      '<div class="card">' +
+        '<div id="simWrap">' +
+          '<canvas id="sim"></canvas>' +
+          '<div id="dayBadge">0일차</div>' +
+          '<div id="spd" class="chips">' +
+            '<button class="chip on" type="button" data-s="1">1배</button>' +
+            '<button class="chip" type="button" data-s="2">2배</button>' +
+            '<button class="chip" type="button" data-s="4">4배</button>' +
+            '<button class="chip" type="button" data-s="8">8배</button>' +
+          '</div>' +
+          '<div id="legend">' +
+            leg('s', E.LABELS.S) +
+            leg('e', '잠복') +
+            leg('i', E.LABELS.I) +
+            leg('r', E.LABELS.R) +
+          '</div>' +
+        '</div>' +
+        '<div id="stats">' +
+          tile('s', E.LABELS.S, 'nS') +
+          tile('i', E.LABELS.I, 'nI') +
+          tile('r', E.LABELS.R, 'nR') +
+        '</div>' +
+        '<div class="controls">' +
+          '<button class="btn primary" type="button" id="btnRun">시작</button>' +
+          '<button class="btn" type="button" id="btnRe">초기화</button>' +
+        '</div>' +
+      '</div>' +
+      '<div class="card">' +
+        '<h2>날짜별 인원 변화' +
+          '<span class="chips" style="margin-left:auto" id="chMode">' +
+            '<button class="chip on" type="button" data-m="infected">' + E.LABELS.I + '만</button>' +
+            '<button class="chip" type="button" data-m="all">전체</button>' +
+          '</span>' +
+        '</h2>' +
+        '<div class="chartBox"><canvas id="chSeir"></canvas></div>' +
+      '</div>';
+
+    wrap = document.getElementById('simWrap');
+    cv = document.getElementById('sim');
+    ctx = cv.getContext('2d');
+    dayBadge = document.getElementById('dayBadge');
+    chartCv = document.getElementById('chSeir');
+
+    document.getElementById('btnRun').addEventListener('click', toggle);
+    document.getElementById('btnRe').addEventListener('click', function () { pause(); reset(); });
+
+    document.getElementById('spd').addEventListener('click', function (e) {
+      var b = e.target.closest('.chip');
+      if (!b) return;
+      App.speed = parseInt(b.dataset.s, 10);
+      var all = this.querySelectorAll('.chip');
+      for (var i = 0; i < all.length; i++) all[i].classList.toggle('on', all[i] === b);
+    });
+
+    document.getElementById('chMode').addEventListener('click', function (e) {
+      var b = e.target.closest('.chip');
+      if (!b) return;
+      chartMode = b.dataset.m;
+      var all = this.querySelectorAll('.chip');
+      for (var i = 0; i < all.length; i++) all[i].classList.toggle('on', all[i] === b);
+      dirtyChart = true; paintChart();
+    });
+
+    window.addEventListener('resize', onResize);
+    reset();
+    raf = requestAnimationFrame(frame);
+  }
+
+  function leg(cls, name) {
+    return '<span class="lg"><i class="mk ' + cls + '"></i>' + name + '</span>';
+  }
+
+  function tile(cls, name, id) {
+    return '<div class="tile ' + cls + '"><div class="k"><span class="mk ' + cls + '"></span>' + name +
+           '</div><div class="n" id="' + id + '">0</div><div class="sub" id="' + id + 'p">0%</div></div>';
+  }
+
+  function onResize() { sprites = null; dirtyChart = true; }
+
+  /* ---------------------------------------------------------------
+     점 그림 미리 만들기
+     빛나는 부분과 알맹이를 따로 만들어 두면 빛만 겹쳐 쌓을 수 있다.
+     --------------------------------------------------------------- */
+  function buildSprites(scale) {
+    var dpr = Math.min(window.devicePixelRatio || 1, 2);
+    var key = scale.toFixed(3) + '_' + dpr + '_' + (document.body.classList.contains('hc') ? 'hc' : 'df');
+    if (sprites && spriteKey === key) return;
+    spriteKey = key;
+
+    var cs = getComputedStyle(document.body);
+    var colS = cs.getPropertyValue('--c-s').trim();
+    var colI = cs.getPropertyValue('--c-i').trim();
+    var colR = cs.getPropertyValue('--c-r').trim();
+
+    var rS = Math.max(1.5, 2.2 * scale);
+    var rI = Math.max(2.1, 3.1 * scale);
+    var rR = Math.max(1.9, 2.8 * scale);
+
+    sprites = {
+      amb:   glow(150, colS, dpr, 0.16),
+      amb2:  glow(130, colI, dpr, 0.11),
+      S:     dot(rS, colS, dpr, 0.82),
+      E:     dot(rS * 1.15, colI, dpr, 0.42),
+      Eglow: glow(rS * 4.5, colI, dpr, 0.30),
+      I:     dot(rI, colI, dpr, 1),
+      Iglow: glow(rI * 5.5, colI, dpr, 0.62),
+      R:     ring(rR, colR, dpr)
+    };
+  }
+
+  /* 속이 찬 동그라미 */
+  function dot(r, color, dpr, alpha) {
+    var size = Math.ceil((r + 1.5) * 2);
+    var c = make(size, dpr), g = c.getContext('2d');
+    g.scale(dpr, dpr);
+    var m = size / 2;
+    g.globalAlpha = alpha;
+    g.fillStyle = color;
+    g.beginPath(); g.arc(m, m, r, 0, Math.PI * 2); g.fill();
+    return { cv: c, size: size };
+  }
+
+  /* 가장자리로 갈수록 옅어지는 빛무리 */
+  function glow(r, color, dpr, alpha) {
+    var size = Math.ceil(r * 2);
+    var c = make(size, dpr), g = c.getContext('2d');
+    g.scale(dpr, dpr);
+    var m = size / 2;
+    var rg = g.createRadialGradient(m, m, 0, m, m, r);
+    rg.addColorStop(0.00, hexA(color, alpha));
+    rg.addColorStop(0.28, hexA(color, alpha * 0.42));
+    rg.addColorStop(0.62, hexA(color, alpha * 0.11));
+    rg.addColorStop(1.00, hexA(color, 0));
+    g.fillStyle = rg;
+    g.beginPath(); g.arc(m, m, r, 0, Math.PI * 2); g.fill();
+    return { cv: c, size: size };
+  }
+
+  /* 속이 빈 동그라미 */
+  function ring(r, color, dpr) {
+    var lw = Math.max(1.1, r * 0.52);
+    var size = Math.ceil((r + lw) * 2 + 2);
+    var c = make(size, dpr), g = c.getContext('2d');
+    g.scale(dpr, dpr);
+    var m = size / 2;
+    g.strokeStyle = color;
+    g.globalAlpha = 0.8;
+    g.lineWidth = lw;
+    g.beginPath(); g.arc(m, m, r, 0, Math.PI * 2); g.stroke();
+    return { cv: c, size: size };
+  }
+
+  function make(size, dpr) {
+    var c = document.createElement('canvas');
+    c.width = c.height = Math.max(2, Math.ceil(size * dpr));
+    return c;
+  }
+
+  function hexA(hex, a) {
+    hex = hex.replace('#', '');
+    if (hex.length === 3) hex = hex[0] + hex[0] + hex[1] + hex[1] + hex[2] + hex[2];
+    var n = parseInt(hex, 16);
+    return 'rgba(' + ((n >> 16) & 255) + ',' + ((n >> 8) & 255) + ',' + (n & 255) + ',' + a + ')';
+  }
+
+  /* ---------------------------------------------------------------
+     진행
+     --------------------------------------------------------------- */
+  function reset() {
+    sim = new E.Sim(App.params, { N: App.N, maxDays: App.maxDays });
+    waves.length = 0;
+    acc = 0;
+    dirtyChart = true;
+    updateStats();
+    draw(1);
+    paintChart();
+  }
+
+  function advance() {
+    if (sim.day >= App.maxDays) { pause(); return; }
+    sim.subStep();
+    var ni = sim.newInfections;
+    for (var i = 0; i < ni.length && waves.length < 70; i++) {
+      var idx = ni[i];
+      waves.push({ x: sim.x[idx], y: sim.y[idx], t: 0 });
+    }
+    if (sim.sub === 0) { dirtyChart = true; updateStats(); }
+  }
+
+  function toggle() {
+    running = !running;
+    document.getElementById('btnRun').textContent = running ? '일시정지' : '시작';
+    last = 0;
+  }
+
+  function pause() {
+    if (!running) return;
+    running = false;
+    var b = document.getElementById('btnRun');
+    if (b) b.textContent = '시작';
+  }
+
+  function frame(t) {
+    raf = requestAnimationFrame(frame);
+    if (!App.isView('observe') || !sim) return;
+
+    var dt = last ? Math.min(200, t - last) : 16;
+    last = t;
+    clock += dt;
+
+    var interval = STEP_MS / (App.speed || 1);
+
+    if (running) {
+      acc += dt;
+      var budget = 8;
+      while (acc >= interval && budget-- > 0) {
+        acc -= interval;
+        advance();
+      }
+      if (budget <= 0) acc = 0;
+    }
+
+    /* 퍼지는 물결은 화면 시간으로 흐르게 둔다 */
+    for (var i = waves.length - 1; i >= 0; i--) {
+      waves[i].t += dt / 620;
+      if (waves[i].t >= 1) waves.splice(i, 1);
+    }
+
+    draw(running ? Math.min(1, acc / interval) : 1);
+    if (dirtyChart) paintChart();
+  }
+
+  /* ---------------------------------------------------------------
+     그리기
+     a 는 걸음과 걸음 사이의 진행도. 이 값 덕분에 점이 툭툭 튀지 않는다.
+     --------------------------------------------------------------- */
+  function draw(a) {
+    if (!cv || !sim) return;
+    var dpr = Math.min(window.devicePixelRatio || 1, 2);
+    var r = wrap.getBoundingClientRect();
+    var w = Math.max(1, Math.round(r.width)), h = Math.max(1, Math.round(r.height));
+    if (cv.width !== w * dpr || cv.height !== h * dpr) {
+      cv.width = w * dpr; cv.height = h * dpr;
+      sprites = null;
+    }
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, w, h);
+
+    var s = Math.min(w, h) / sim.W;
+    buildSprites(Math.max(0.55, s / 4.4));
+
+    ambient(w, h);
+    grid(w, h);
+
+    var N = sim.N, i, sp, hs;
+    var X = sim.x, Y = sim.y, PX = sim.px, PY = sim.py, ST = sim.status;
+
+    /* 1. 아직 안 걸린 사람 */
+    sp = sprites.S; hs = sp.size / 2;
+    for (i = 0; i < N; i++) {
+      if (ST[i] !== 0) continue;
+      ctx.drawImage(sp.cv, (PX[i] + (X[i] - PX[i]) * a) * s - hs, (PY[i] + (Y[i] - PY[i]) * a) * s - hs, sp.size, sp.size);
+    }
+
+    /* 2. 회복한 사람 */
+    sp = sprites.R; hs = sp.size / 2;
+    for (i = 0; i < N; i++) {
+      if (ST[i] !== 3) continue;
+      ctx.drawImage(sp.cv, (PX[i] + (X[i] - PX[i]) * a) * s - hs, (PY[i] + (Y[i] - PY[i]) * a) * s - hs, sp.size, sp.size);
+    }
+
+    /* 3. 빛은 겹쳐 쌓는다. 감염자가 모인 곳이 저절로 더 밝아진다 */
+    ctx.globalCompositeOperation = 'lighter';
+
+    var pulse = 1 + 0.09 * Math.sin(clock / 430);
+
+    sp = sprites.Eglow;
+    for (i = 0; i < N; i++) {
+      if (ST[i] !== 1) continue;
+      ctx.drawImage(sp.cv, (PX[i] + (X[i] - PX[i]) * a) * s - sp.size / 2, (PY[i] + (Y[i] - PY[i]) * a) * s - sp.size / 2, sp.size, sp.size);
+    }
+
+    sp = sprites.Iglow;
+    for (i = 0; i < N; i++) {
+      if (ST[i] !== 2) continue;
+      var gs = sp.size * pulse;
+      ctx.drawImage(sp.cv, (PX[i] + (X[i] - PX[i]) * a) * s - gs / 2, (PY[i] + (Y[i] - PY[i]) * a) * s - gs / 2, gs, gs);
+    }
+
+    drawWaves(s);
+    ctx.globalCompositeOperation = 'source-over';
+
+    /* 4. 알맹이 */
+    sp = sprites.E; hs = sp.size / 2;
+    for (i = 0; i < N; i++) {
+      if (ST[i] !== 1) continue;
+      ctx.drawImage(sp.cv, (PX[i] + (X[i] - PX[i]) * a) * s - hs, (PY[i] + (Y[i] - PY[i]) * a) * s - hs, sp.size, sp.size);
+    }
+    sp = sprites.I; hs = sp.size / 2;
+    for (i = 0; i < N; i++) {
+      if (ST[i] !== 2) continue;
+      ctx.drawImage(sp.cv, (PX[i] + (X[i] - PX[i]) * a) * s - hs, (PY[i] + (Y[i] - PY[i]) * a) * s - hs, sp.size, sp.size);
+    }
+
+    if (dayBadge) dayBadge.textContent = sim.day + '일차';
+  }
+
+  /* 아주 천천히 도는 배경 빛 */
+  function ambient(w, h) {
+    ctx.globalCompositeOperation = 'lighter';
+    var a = sprites.amb, b = sprites.amb2;
+    var t = clock / 1000;
+    ctx.drawImage(a.cv,
+      w * (0.5 + 0.30 * Math.cos(t / 11)) - a.size / 2,
+      h * (0.5 + 0.26 * Math.sin(t / 9)) - a.size / 2, a.size, a.size);
+    ctx.drawImage(b.cv,
+      w * (0.5 - 0.28 * Math.cos(t / 13 + 1.7)) - b.size / 2,
+      h * (0.5 - 0.24 * Math.sin(t / 15 + 0.6)) - b.size / 2, b.size, b.size);
+    ctx.globalCompositeOperation = 'source-over';
+  }
+
+  /* 옅은 격자. 점이 움직이는 게 눈에 더 잘 들어온다 */
+  function grid(w, h) {
+    ctx.strokeStyle = 'rgba(255,255,255,0.028)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    for (var i = 1; i < 8; i++) {
+      var x = Math.round(w * i / 8) + 0.5, y = Math.round(h * i / 8) + 0.5;
+      ctx.moveTo(x, 0); ctx.lineTo(x, h);
+      ctx.moveTo(0, y); ctx.lineTo(w, y);
+    }
+    ctx.stroke();
+  }
+
+  /* 새로 옮았을 때 퍼지는 물결. 처음엔 빠르게, 끝으로 갈수록 천천히 */
+  function drawWaves(s) {
+    if (!waves.length) return;
+    var col = getComputedStyle(document.body).getPropertyValue('--c-i').trim();
+    for (var i = 0; i < waves.length; i++) {
+      var v = waves[i];
+      var e = 1 - Math.pow(1 - v.t, 3);        // 점점 느려지는 곡선
+      var fade = Math.pow(1 - v.t, 1.7);
+      var cx = v.x * s, cy = v.y * s;
+
+      ctx.strokeStyle = hexA(col, 0.55 * fade);
+      ctx.lineWidth = Math.max(0.7, 2.4 * fade);
+      ctx.beginPath();
+      ctx.arc(cx, cy, 2 + e * 26, 0, Math.PI * 2);
+      ctx.stroke();
+
+      if (v.t < 0.6) {
+        var u = v.t / 0.6;
+        ctx.strokeStyle = hexA(col, 0.3 * (1 - u));
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.arc(cx, cy, 1 + (1 - Math.pow(1 - u, 3)) * 13, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+
+      if (v.t < 0.3) {
+        var f = 1 - v.t / 0.3;
+        ctx.fillStyle = hexA(col, 0.5 * f);
+        ctx.beginPath();
+        ctx.arc(cx, cy, 1.5 + 5 * f, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+  }
+
+  /* ---------------------------------------------------------------
+     숫자와 그래프
+     --------------------------------------------------------------- */
+  function updateStats() {
+    var c = sim.counts(), N = sim.N;
+    set('nS', c.S, N); set('nI', c.I, N); set('nR', c.R, N);
+  }
+
+  function set(id, v, N) {
+    var e = document.getElementById(id);
+    if (!e) return;
+    e.textContent = v.toLocaleString();
+    var p = document.getElementById(id + 'p');
+    if (p) p.textContent = Math.round(v / N * 100) + '%';
+  }
+
+  function paintChart() {
+    if (!chartCv || !sim) return;
+    dirtyChart = false;
+    Charts.seir(chartCv, sim.history, sim.N, chartMode);
+  }
+
+  return {
+    mount: mount,
+    reset: reset,
+    pause: pause,
+    refresh: function () { sprites = null; dirtyChart = true; draw(1); paintChart(); }
+  };
+})();
+
+
+/* ===== main.js ===== */
+/* =====================================================================
+   조립
+   화면은 관찰과 설정 두 개뿐이다. 위쪽 탭에서 같은 크기로 나눠 쓴다.
+   ===================================================================== */
+
+var App = {
+  params: E.defaultParams(),
+  N: E.SIM_DEFAULTS.N,
+  maxDays: E.SIM_DEFAULTS.maxDays,
+  speed: 1,
+  view: 'observe',
+  isView: function (v) { return App.view === v; }
+};
+
+(function () {
+
+  var VIEWS = [
+    { key: 'observe',  name: '관찰' },
+    { key: 'settings', name: '설정' }
+  ];
+
+  function show(key) {
+    App.view = key;
+
+    VIEWS.forEach(function (v) {
+      document.getElementById('view_' + v.key).classList.toggle('on', v.key === key);
+    });
+
+    var tabs = document.querySelectorAll('#tabs .tab');
+    for (var i = 0; i < tabs.length; i++) tabs[i].classList.toggle('on', tabs[i].dataset.v === key);
+
+    document.getElementById('stage').scrollTop = 0;
+    if (key === 'observe') Observe.refresh();
+  }
+
+  function init() {
+    var tabs = document.getElementById('tabs');
+
+    tabs.innerHTML = VIEWS.map(function (v) {
+      return '<button class="tab" type="button" data-v="' + v.key + '">' + v.name + '</button>';
+    }).join('');
+
+    tabs.addEventListener('click', function (e) {
+      var b = e.target.closest('.tab');
+      if (b) show(b.dataset.v);
+    });
+
+    Panel.build(document.getElementById('view_settings'), {
+      onChange: function (what) {
+        if (what === 'palette') { Observe.refresh(); return; }
+        Observe.reset();
+      }
+    });
+
+    Observe.mount(document.getElementById('view_observe'));
+    show('observe');
+  }
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
+  else init();
+})();
+
+</script>
+</body>
+</html>
