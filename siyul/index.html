@@ -384,34 +384,11 @@ td.wrap, th.wrap { white-space: normal; min-width: 170px; }
 }
 
 
-/* PC 화면: 글씨를 1.3배로 */
+/* PC 화면: 화면 전체를 1.35배로 키우고, 지도는 한 화면에 들어오게 */
 @media (min-width: 1100px) and (min-height: 700px) {
-  body { font-size: 18.2px; }
-  #brand b { font-size: 19.5px; }
-  #brand span { font-size: 14.3px; }
-  .tab { font-size: 16.9px; }
-  .pgroup > h3 { font-size: 14.3px; }
-  .chip { font-size: 15.6px; }
-  .region-title { font-size: 15.0px; }
-  .sl > label { font-size: 15.6px; }
-  .sl .v { font-size: 16.2px; }
-  .sl .hint { font-size: 14.3px; }
-  .card > h2 { font-size: 16.2px; }
-  .card > h2 small { font-size: 14.3px; }
-  #dayBadge { font-size: 15.6px; }
-  .lg { font-size: 13.7px; }
-  #spd .chip { font-size: 14.3px; }
-  .btn { font-size: 16.9px; }
-  .tile .k { font-size: 13.7px; }
-  .tile .n { font-size: 27.3px; }
-  .tile .sub { font-size: 13.0px; }
-  .row > label { font-size: 15.6px; }
-  select, input[type=number] { font-size: 16.9px; }
-  .progText { font-size: 14.3px; }
-  table { font-size: 15.6px; }
-  th { font-size: 14.3px; }
-  .note { font-size: 15.0px; }
-  .formula { font-size: 15.0px; }
+  body { zoom: 1.35; }
+  .view { max-width: min(940px, calc(100vw / 1.35 - 40px)); }
+  #simWrap { width: min(100%, calc((100vh - 330px) / 1.35)); }
 }
 </style>
 </head>
