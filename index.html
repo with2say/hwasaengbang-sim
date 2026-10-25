@@ -403,12 +403,12 @@ td.wrap, th.wrap { white-space: normal; min-width: 170px; }
 /* PC: 관찰 화면 글씨를 화면 높이에 맞춰 크게 (뒷자리에서도 보이게) */
 @media (min-width: 1000px) and (min-height: 560px) {
   #simWrap { container-type: inline-size; }
-  #dayBadge { font-size: 5.6cqw; padding: 1.2cqw 2.6cqw; border-radius: 2cqw; }
-  #spd { padding: 0.7cqw; border-radius: 2cqw; }
-  #spd .chip { font-size: 5cqw; padding: 1cqw 2.2cqw; border-radius: 1.4cqw; }
-  #legend { padding: 1.3cqw 2.4cqw; gap: 0.8cqw 3.2cqw; border-radius: 2cqw; }
-  #legend .lg { font-size: 4.8cqw; gap: 1.3cqw; }
-  #legend .mk { width: 3.4cqw; height: 3.4cqw; }
+  #dayBadge { font-size: 4.14cqw; padding: 0.89cqw 1.92cqw; border-radius: 1.48cqw; }
+  #spd { padding: 0.52cqw; border-radius: 1.48cqw; }
+  #spd .chip { font-size: 3.7cqw; padding: 0.74cqw 1.63cqw; border-radius: 1.04cqw; }
+  #legend { padding: 0.96cqw 1.78cqw; gap: 0.59cqw 2.37cqw; border-radius: 1.48cqw; }
+  #legend .lg { font-size: 3.55cqw; gap: 0.96cqw; }
+  #legend .mk { width: 2.52cqw; height: 2.52cqw; }
   #view_observe .tile .mk { width: calc(2.16vh / 1.35); height: calc(2.16vh / 1.35); }
   #view_observe .tile { padding: calc(1.09vh / 1.35) calc(1.4vh / 1.35); }
   #view_observe .tile .k { font-size: calc(2.65vh / 1.35); gap: calc(0.78vh / 1.35); }
@@ -459,7 +459,7 @@ window.__fs = window.matchMedia('(min-width: 1000px) and (min-height: 560px)').m
     var padX = parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight);
     var top = left.getBoundingClientRect().top / z;
     var availH = left.clientHeight - padY;
-    var availW = (view.clientWidth - 12) * 0.38 - padX;
+    var availW = (view.clientWidth - 12) * 0.6 - padX;
     var size = Math.max(200, Math.floor(Math.min(availW, availH)));
     if (w.style.width !== size + 'px') { w.style.width = size + 'px'; window.dispatchEvent(new Event('resize')); }
   }
@@ -955,7 +955,7 @@ var Charts = (function () {
      ------------------------------------------------------------- */
   function seir(cv, hist, N, mode) {
     var f = fit(cv), ctx = f.ctx;
-    var F = window.__fs || 1; var box = { l: 40 * F, t: 12 * F, w: f.w - 40 * F - 34 * F, h: f.h - 12 * F - 24 * F };
+    var F = window.__fs || 1; var box = { l: 28 * F, t: 12 * F, w: f.w - 28 * F - 20 * F, h: f.h - 12 * F - 24 * F };
     if (box.w <= 10 || box.h <= 10) return;
 
     var days = hist.day, n = days.length, i;
