@@ -1335,7 +1335,9 @@ var Observe = (function () {
   var acc = 0, last = 0, raf = 0, clock = 0;
   var dirtyChart = true;
   var chartMode = 'infected';
-  var round = 1;       // 몇 번째 판인지. 1판은 예전과 같은 출발 조건이다
+  var round = 1;       // 몇 번째 판인지
+  var DEMO_SEED = 106052;  // 1판: 발표 시연용 출발 조건 (PRR 0이면 정점 55일, 1이면 145일로 PPT 평균과 비슷)
+  var seed = DEMO_SEED;
 
   var STEP_MS = 100;   // 이 간격마다 시뮬레이션이 반 나절 진행된다
 
@@ -1392,6 +1394,7 @@ var Observe = (function () {
     document.getElementById('btnRe').addEventListener('click', function () { pause(); reset(); });
     document.getElementById('btnNext').addEventListener('click', function () {
       round++;
+      seed = 1 + Math.floor(Math.random() * 1000000000);  // 2판부터는 누를 때마다 무작위
       document.getElementById('btnNext').textContent = '다른 판 (' + round + '판)';
       pause(); reset();
     });
@@ -1519,7 +1522,7 @@ var Observe = (function () {
      진행
      --------------------------------------------------------------- */
   function reset() {
-    sim = new E.Sim(App.params, { N: App.N, maxDays: App.maxDays, seed: 12345 + (round - 1) * 7919 });
+    sim = new E.Sim(App.params, { N: App.N, maxDays: App.maxDays, seed: seed });
     waves.length = 0;
     acc = 0;
     dirtyChart = true;
