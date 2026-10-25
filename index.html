@@ -1404,7 +1404,7 @@ var Observe = (function () {
         '<div class="controls">' +
           '<button class="btn primary" type="button" id="btnRun">시작</button>' +
           '<button class="btn" type="button" id="btnRe">초기화</button>' +
-          '<button class="btn" type="button" id="btnNext">다른 판 (1판)</button>' +
+          '<button class="btn" type="button" id="btnNext" title="누르면 다음 판(다른 출발 조건)으로 바뀝니다">1판</button>' +
         '</div>' +
       '</div>' +
       '<div class="card">' +
@@ -1428,7 +1428,7 @@ var Observe = (function () {
     document.getElementById('btnNext').addEventListener('click', function () {
       round++;
       seed = 1 + Math.floor(Math.random() * 1000000000);  // 2판부터는 누를 때마다 무작위
-      document.getElementById('btnNext').textContent = '다른 판 (' + round + '판)';
+      document.getElementById('btnNext').textContent = round + '판';
       pause(); reset();
     });
 
