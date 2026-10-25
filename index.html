@@ -507,7 +507,7 @@ var VARS = [
     desc: '독성이 셀수록 회복까지 오래 걸리고, 그만큼 남을 감염시킬 기간도 길어진다' },
   { key: 'mutation',  region: '병원체', name: '변이율',        unit: 'pct',  min: 0,    max: 1,    step: 0.01, def: 0.10,
     desc: '변이가 쌓이면 전파력이 조금씩 오르고 백신 효과는 조금씩 떨어진다' },
-  { key: 'prr',       region: '면역',   name: 'PRR 발현 수준', unit: 'pct',  min: 0,    max: 1,    step: 0.01, def: 0.50,
+  { key: 'prr',       region: '면역',   name: 'PRR 발현 수준', unit: 'pct',  min: 0,    max: 1,    step: 0.01, def: 0,
     desc: '병원체를 가장 먼저 알아채는 선천면역 수용체가 얼마나 잘 작동하는지' },
   { key: 'vaccine',   region: '면역',   name: '백신 접종률',   unit: 'pct',  min: 0,    max: 1,    step: 0.01, def: 0.40,
     desc: '후천면역을 미리 만들어 둔 사람의 비율' },
