@@ -389,7 +389,9 @@ td.wrap, th.wrap { white-space: normal; min-width: 170px; }
   body { zoom: 1.35; }
   .view { max-width: min(1500px, calc(100vw / 1.35 - 30px)); }
   /* PC: 왼쪽 지도, 오른쪽 그래프 */
-  #view_observe.on { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; align-items: stretch; }
+  #view_observe.on { display: grid; grid-template-columns: auto 1fr; gap: 12px; align-items: stretch; }
+  #view_observe > .card:nth-child(2) #stats { margin-top: 0; margin-bottom: 8px; }
+  #view_observe > .card:nth-child(2) .controls { margin-bottom: 12px; }
   #view_observe > .card { margin: 0; }
   #view_observe > .card:nth-child(2) { display: flex; flex-direction: column; }
   #view_observe > .card:nth-child(2) .chartBox { flex: 1; height: auto; min-height: 240px; }
@@ -1861,6 +1863,38 @@ var App = {
     return true;
   }
   var tries = 0, t = setInterval(function () { if (addBtn() || ++tries > 50) clearInterval(t); }, 200);
+})();
+</script>
+<script>
+/* PC: 숫자 칸과 버튼은 오른쪽 그래프 위로 옮기고, 지도는 왼쪽에 화면 높이만큼 꽉 차게 */
+(function () {
+  var mq = window.matchMedia('(min-width: 1100px) and (min-height: 700px)');
+  function fit() {
+    var w = document.getElementById('simWrap');
+    var view = document.getElementById('view_observe');
+    if (!w || !view) return;
+    var left = w.parentElement, right = view.children[1];
+    var stats = document.getElementById('stats'), ctrl = view.querySelector('.controls');
+    var pc = mq.matches && !document.body.classList.contains('simfs');
+    if (pc && right && stats && stats.parentElement !== right) { right.insertBefore(ctrl, right.firstChild); right.insertBefore(stats, right.firstChild); }
+    if (!pc && stats && stats.parentElement !== left) { left.appendChild(stats); left.appendChild(ctrl); }
+    if (!pc) { w.style.width = ''; return; }
+    var z = parseFloat(getComputedStyle(document.body).zoom) || 1;
+    var cs = getComputedStyle(left);
+    var padY = parseFloat(cs.paddingTop) + parseFloat(cs.paddingBottom);
+    var padX = parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight);
+    var top = left.getBoundingClientRect().top / z;
+    var availH = window.innerHeight / z - top - padY - 12;
+    var availW = (view.clientWidth - 12) * 0.6 - padX;
+    var size = Math.max(200, Math.floor(Math.min(availW, availH)));
+    if (w.style.width !== size + 'px') { w.style.width = size + 'px'; window.dispatchEvent(new Event('resize')); }
+  }
+  var t; function soon() { clearTimeout(t); t = setTimeout(fit, 60); }
+  window.addEventListener('resize', function (e) { if (e.isTrusted) soon(); });
+  if (mq.addEventListener) mq.addEventListener('change', soon);
+  document.addEventListener('fullscreenchange', soon);
+  document.addEventListener('click', function (e) { if (e.target && e.target.id === 'fsBtn') soon(); });
+  var n = 0, iv = setInterval(function () { if (document.getElementById('simWrap')) { fit(); if (++n > 3) clearInterval(iv); } }, 300);
 })();
 </script>
 </body>
