@@ -431,7 +431,7 @@ var EFFECT = {
 var VARS = [
   { key: 'beta',      region: '병원체', name: '감염력',        unit: 'pct',  min: 0.05, max: 0.80, step: 0.01, def: 0.28,
     desc: '한 번 접촉했을 때 아무 방어 수단이 없다고 볼 때의 기본 전파 확률' },
-  { key: 'toxicity',  region: '병원체', name: '독성',          unit: 'day',  min: 3,    max: 30,   step: 1,    def: 12,
+  { key: 'toxicity',  region: '병원체', name: '독성',          unit: 'day',  min: 3,    max: 30,   step: 1,    def: 11,
     desc: '독성이 셀수록 회복까지 오래 걸리고, 그만큼 남을 감염시킬 기간도 길어진다' },
   { key: 'mutation',  region: '병원체', name: '변이율',        unit: 'pct',  min: 0,    max: 1,    step: 0.01, def: 0.10,
     desc: '변이가 쌓이면 전파력이 조금씩 오르고 백신 효과는 조금씩 떨어진다' },
@@ -546,7 +546,7 @@ var SIM_DEFAULTS = {
   subSteps: 2,      // 하루에 접촉이 일어나는 횟수
   maxDays: 360,     // 관찰 기간
   seeds: 3,         // 최초 감염자 수
-  latent: 6         // 잠복기. 이 기간에는 감염됐지만 아직 남한테 못 옮긴다
+  latent: 5         // 잠복기. 이 기간에는 감염됐지만 아직 남한테 못 옮긴다
 };
 
 function Sim(params, opts) {
@@ -784,6 +784,11 @@ function runRepeats(params, reps, opts, seed0) {
    7. 출처 표
    --------------------------------------------------------------- */
 var SOURCES = [
+  { item: '코로나19 초기 R0 (문헌값)', value: 'R0 2.2 (95% CI 1.4~3.9)', ref: 'Li Q et al., N Engl J Med 382:1199, 2020. 우한 초기 확진자 425명 분석' },
+  { item: '코로나19 초기 R0 (문헌값)', value: 'R0 2.68 (95% CrI 2.47~2.86)', ref: 'Wu JT, Leung K, Leung GM, Lancet 395:689, 2020. 수리 모델 추정' },
+  { item: '코로나19 초기 감염력', value: '기본 전파 확률(beta) 28%로 설정', ref: '문헌값을 그대로 넣은 것이 아니라 사전 반복 테스트로 맞춘 모델 내부 보정값. 사후 검증 결과 본 모델의 R0 는 약 4.1~4.4 로, 위 문헌값보다 높다. 2차원 격자 접촉 가정 때문으로 보이며 한계점에 적는다' },
+  { item: '잠복기 5일', value: '잠복기 중앙값 5.1일 (95% CI 4.5~5.8)', ref: 'Lauer SA et al., Ann Intern Med 172:577, 2020. 확진자 181명. Li Q et al. 2020 의 평균 5.2일(95% CI 4.1~7.0)과도 일치' },
+  { item: '전파 가능 기간 (독성 11일)', value: '살아있는 바이러스가 발병 9일 이후로는 검출되지 않음', ref: 'Cevik M et al., Lancet Microbe 2:e13, 2021 (79개 연구 5340명 메타분석). 다만 우리 모델의 11일은 이 9일보다 길다. 증상 발현 전 전파(2차 감염의 44%, He X et al., Nat Med 26:672, 2020)를 함께 담기 위해 늘려 잡은 값이다' },
   { item: '마스크 착용', value: '전파 53% 감소', ref: 'Chu DK et al., Lancet 395:1973, 2020 (메타분석)' },
   { item: '거리두기 1 m 이상', value: '82% 감소', ref: 'Chu DK et al., Lancet 395:1973, 2020 (메타분석)' },
   { item: '손씻기', value: '호흡기 감염 약 20% 감소', ref: 'Aiello AE et al., Am J Public Health 98:1372, 2008' },
@@ -792,7 +797,7 @@ var SOURCES = [
   { item: '영양 결핍', value: '감염 위험 최대 2.5배', ref: 'UNICEF/WHO, Lancet 영양과 면역 시리즈, 2008' },
   { item: '감염병 수리 모델의 기본 틀', value: 'SIR 구획 모형', ref: 'Kermack WO, McKendrick AG, Proc R Soc A 115:700, 1927' },
   { item: '선천면역과 후천면역 개념', value: 'PRR, 항원 제시, 기억세포', ref: '고등학교 생명과학 II 교과서 III단원' },
-  { item: '3변수 시뮬레이션 원형', value: '마스크, 거리두기, 백신', ref: '팀원 방학숙제, 2026.02' }
+  { item: '3변수 시뮬레이션 원형', value: '마스크, 거리두기, 백신', ref: '박시율, 감염병 방학숙제, 2026.02' }
 ];
 
 /* 값 표시 형식 */
