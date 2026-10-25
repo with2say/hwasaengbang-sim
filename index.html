@@ -1382,7 +1382,7 @@ var Observe = (function () {
       '<div class="card">' +
         '<div id="simWrap">' +
           '<canvas id="sim"></canvas>' +
-          '<div id="dayBadge">0일차</div>' +
+          '<div id="dayBadge">1판 · 0일차</div>' +
           '<div id="spd" class="chips">' +
             '<button class="chip on" type="button" data-s="1">1배</button>' +
             '<button class="chip" type="button" data-s="2">2배</button>' +
@@ -1404,7 +1404,7 @@ var Observe = (function () {
         '<div class="controls">' +
           '<button class="btn primary" type="button" id="btnRun">시작</button>' +
           '<button class="btn" type="button" id="btnRe">초기화</button>' +
-          '<button class="btn" type="button" id="btnNext" title="누르면 다음 판(다른 출발 조건)으로 바뀝니다">1판</button>' +
+          '<button class="btn" type="button" id="btnNext">다른 판</button>' +
         '</div>' +
       '</div>' +
       '<div class="card">' +
@@ -1428,7 +1428,7 @@ var Observe = (function () {
     document.getElementById('btnNext').addEventListener('click', function () {
       round++;
       seed = 1 + Math.floor(Math.random() * 1000000000);  // 2판부터는 누를 때마다 무작위
-      document.getElementById('btnNext').textContent = round + '판';
+      document.getElementById('btnNext').textContent = '다른 판';
       pause(); reset();
     });
 
@@ -1690,7 +1690,7 @@ var Observe = (function () {
       ctx.drawImage(sp.cv, (PX[i] + (X[i] - PX[i]) * a) * s - hs, (PY[i] + (Y[i] - PY[i]) * a) * s - hs, sp.size, sp.size);
     }
 
-    if (dayBadge) dayBadge.textContent = sim.day + '일차';
+    if (dayBadge) dayBadge.textContent = round + '판 · ' + sim.day + '일차';
   }
 
   /* 아주 천천히 도는 배경 빛 */
