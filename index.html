@@ -419,6 +419,7 @@ td.wrap, th.wrap { white-space: normal; min-width: 170px; }
   #view_observe .card > h2 { font-size: calc(2.81vh / 1.35); margin-bottom: calc(0.94vh / 1.35); }
   #view_observe .card > h2 .chip { font-size: calc(2.5vh / 1.35); padding: calc(0.62vh / 1.35) calc(1.25vh / 1.35); }
 }
+
 </style>
 </head>
 <body>
@@ -434,8 +435,43 @@ td.wrap, th.wrap { white-space: normal; min-width: 170px; }
   </main>
 </div>
 
-<script>window.__fs = window.matchMedia('(min-width: 1000px) and (min-height: 560px)').matches ? Math.max(1.5, window.innerHeight / 430) : 1;</script>
 <script>
+/* ===== pc.js ===== */
+/* PC 화면 전용: 글씨 배율과 화면 맞춤 배치 (폰은 영향 없음) */
+window.__fs = window.matchMedia('(min-width: 1000px) and (min-height: 560px)').matches ? Math.max(1.5, window.innerHeight / 430) : 1;
+
+/* PC: 숫자 칸과 버튼은 오른쪽 그래프 위로 옮기고, 지도는 왼쪽에 화면 높이만큼 꽉 차게 */
+(function () {
+  var mq = window.matchMedia('(min-width: 1100px) and (min-height: 700px)');
+  function fit() {
+    var w = document.getElementById('simWrap');
+    var view = document.getElementById('view_observe');
+    if (!w || !view) return;
+    var left = w.parentElement, right = view.children[1];
+    var stats = document.getElementById('stats'), ctrl = view.querySelector('.controls');
+    var pc = mq.matches && !document.body.classList.contains('simfs');
+    if (pc && right && stats && stats.parentElement !== right) { right.insertBefore(ctrl, right.firstChild); right.insertBefore(stats, right.firstChild); }
+    if (!pc && stats && stats.parentElement !== left) { left.appendChild(stats); left.appendChild(ctrl); }
+    if (!pc) { w.style.width = ''; return; }
+    var z = parseFloat(getComputedStyle(document.body).zoom) || 1;
+    var cs = getComputedStyle(left);
+    var padY = parseFloat(cs.paddingTop) + parseFloat(cs.paddingBottom);
+    var padX = parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight);
+    var top = left.getBoundingClientRect().top / z;
+    var availH = left.clientHeight - padY;
+    var availW = (view.clientWidth - 12) * 0.38 - padX;
+    var size = Math.max(200, Math.floor(Math.min(availW, availH)));
+    if (w.style.width !== size + 'px') { w.style.width = size + 'px'; window.dispatchEvent(new Event('resize')); }
+  }
+  var t; function soon() { clearTimeout(t); t = setTimeout(fit, 60); }
+  window.addEventListener('resize', function (e) { if (e.isTrusted) soon(); });
+  if (mq.addEventListener) mq.addEventListener('change', soon);
+  document.addEventListener('fullscreenchange', soon);
+  document.addEventListener('click', function (e) { if (e.target && e.target.id === 'fsBtn') soon(); });
+  var n = 0, iv = setInterval(function () { if (document.getElementById('simWrap')) { fit(); if (++n > 3) clearInterval(iv); } }, 300);
+})();
+
+
 /* ===== engine.js ===== */
 /* =====================================================================
    다변수 감염 확산 시뮬레이션 엔진
@@ -1385,7 +1421,7 @@ var Observe = (function () {
       '<div class="card">' +
         '<div id="simWrap">' +
           '<canvas id="sim"></canvas>' +
-          '<div id="dayBadge">1판 · 0일차</div>' +
+          '<div id="dayBadge">1판, 0일차</div>' +
           '<div id="spd" class="chips">' +
             '<button class="chip on" type="button" data-s="1">1배</button>' +
             '<button class="chip" type="button" data-s="2">2배</button>' +
@@ -1693,7 +1729,7 @@ var Observe = (function () {
       ctx.drawImage(sp.cv, (PX[i] + (X[i] - PX[i]) * a) * s - hs, (PY[i] + (Y[i] - PY[i]) * a) * s - hs, sp.size, sp.size);
     }
 
-    if (dayBadge) dayBadge.textContent = round + '판 · ' + sim.day + '일차';
+    if (dayBadge) dayBadge.textContent = round + '판, ' + sim.day + '일차';
   }
 
   /* 아주 천천히 도는 배경 빛 */
@@ -1852,38 +1888,6 @@ var App = {
   else init();
 })();
 
-</script>
-<script>
-/* PC: 숫자 칸과 버튼은 오른쪽 그래프 위로 옮기고, 지도는 왼쪽에 화면 높이만큼 꽉 차게 */
-(function () {
-  var mq = window.matchMedia('(min-width: 1100px) and (min-height: 700px)');
-  function fit() {
-    var w = document.getElementById('simWrap');
-    var view = document.getElementById('view_observe');
-    if (!w || !view) return;
-    var left = w.parentElement, right = view.children[1];
-    var stats = document.getElementById('stats'), ctrl = view.querySelector('.controls');
-    var pc = mq.matches && !document.body.classList.contains('simfs');
-    if (pc && right && stats && stats.parentElement !== right) { right.insertBefore(ctrl, right.firstChild); right.insertBefore(stats, right.firstChild); }
-    if (!pc && stats && stats.parentElement !== left) { left.appendChild(stats); left.appendChild(ctrl); }
-    if (!pc) { w.style.width = ''; return; }
-    var z = parseFloat(getComputedStyle(document.body).zoom) || 1;
-    var cs = getComputedStyle(left);
-    var padY = parseFloat(cs.paddingTop) + parseFloat(cs.paddingBottom);
-    var padX = parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight);
-    var top = left.getBoundingClientRect().top / z;
-    var availH = left.clientHeight - padY;
-    var availW = (view.clientWidth - 12) * 0.38 - padX;
-    var size = Math.max(200, Math.floor(Math.min(availW, availH)));
-    if (w.style.width !== size + 'px') { w.style.width = size + 'px'; window.dispatchEvent(new Event('resize')); }
-  }
-  var t; function soon() { clearTimeout(t); t = setTimeout(fit, 60); }
-  window.addEventListener('resize', function (e) { if (e.isTrusted) soon(); });
-  if (mq.addEventListener) mq.addEventListener('change', soon);
-  document.addEventListener('fullscreenchange', soon);
-  document.addEventListener('click', function (e) { if (e.target && e.target.id === 'fsBtn') soon(); });
-  var n = 0, iv = setInterval(function () { if (document.getElementById('simWrap')) { fit(); if (++n > 3) clearInterval(iv); } }, 300);
-})();
 </script>
 </body>
 </html>
