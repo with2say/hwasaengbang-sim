@@ -195,7 +195,7 @@ input[type=range]::-moz-range-thumb {
   -webkit-overflow-scrolling: touch;
   padding: 9px 9px calc(12px + env(safe-area-inset-bottom));
 }
-.view { display: none; max-width: 760px; margin: 0 auto; }
+.view { display: none; max-width: 940px; margin: 0 auto; }
 .view.on { display: block; animation: fade .25s ease; }
 @keyframes fade { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
 
@@ -216,9 +216,8 @@ input[type=range]::-moz-range-thumb {
 
 #simWrap {
   position: relative;
-  width: 100%;
+  width: min(100%, calc(100vh - 260px), 860px);
   aspect-ratio: 1 / 1;
-  max-height: min(56vh, 520px);
   margin: 0 auto;
   border-radius: 13px;
   overflow: hidden;
@@ -354,8 +353,8 @@ td.wrap, th.wrap { white-space: normal; min-width: 170px; }
 }
 
 @media (max-width: 860px) {
-  #simWrap { max-height: 50vh; }
-  @supports (max-height: 50dvh) { #simWrap { max-height: min(50dvh, 440px); } }
+  #simWrap { width: min(100%, 50vh); }
+  @supports (width: 50dvh) { #simWrap { width: min(100%, 50dvh, 440px); } }
   .chartBox { height: 190px; }
   .chartBox.tall { height: 240px; }
   #stats { gap: 6px; }
@@ -384,6 +383,13 @@ td.wrap, th.wrap { white-space: normal; min-width: 170px; }
   *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
 }
 
+
+/* PC 화면: 화면 전체를 1.35배로 키우고, 지도는 한 화면에 들어오게 */
+@media (min-width: 1100px) and (min-height: 700px) {
+  body { zoom: 1.35; }
+  .view { max-width: min(940px, calc(100vw / 1.35 - 40px)); }
+  #simWrap { width: min(100%, calc((100vh - 330px) * 1.3 / 1.35)); }
+}
 </style>
 </head>
 <body>
@@ -797,7 +803,7 @@ var SOURCES = [
   { item: '영양 결핍', value: '감염 위험 최대 2.5배', ref: 'UNICEF/WHO, Lancet 영양과 면역 시리즈, 2008' },
   { item: '감염병 수리 모델의 기본 틀', value: 'SIR 구획 모형', ref: 'Kermack WO, McKendrick AG, Proc R Soc A 115:700, 1927' },
   { item: '선천면역과 후천면역 개념', value: 'PRR, 항원 제시, 기억세포', ref: '고등학교 생명과학 II 교과서 III단원' },
-  { item: '3변수 시뮬레이션 원형', value: '마스크, 거리두기, 백신', ref: '박시율, 감염병 방학숙제, 2026.02' }
+  { item: '3변수 시뮬레이션 원형', value: '마스크, 거리두기, 백신', ref: '팀원 방학숙제, 2026.02' }
 ];
 
 /* 값 표시 형식 */
