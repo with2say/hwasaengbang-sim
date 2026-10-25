@@ -1335,6 +1335,7 @@ var Observe = (function () {
   var acc = 0, last = 0, raf = 0, clock = 0;
   var dirtyChart = true;
   var chartMode = 'infected';
+  var round = 1;       // 몇 번째 판인지. 1판은 예전과 같은 출발 조건이다
 
   var STEP_MS = 100;   // 이 간격마다 시뮬레이션이 반 나절 진행된다
 
@@ -1368,6 +1369,7 @@ var Observe = (function () {
         '<div class="controls">' +
           '<button class="btn primary" type="button" id="btnRun">시작</button>' +
           '<button class="btn" type="button" id="btnRe">초기화</button>' +
+          '<button class="btn" type="button" id="btnNext">다른 판 (1판)</button>' +
         '</div>' +
       '</div>' +
       '<div class="card">' +
@@ -1388,6 +1390,11 @@ var Observe = (function () {
 
     document.getElementById('btnRun').addEventListener('click', toggle);
     document.getElementById('btnRe').addEventListener('click', function () { pause(); reset(); });
+    document.getElementById('btnNext').addEventListener('click', function () {
+      round++;
+      document.getElementById('btnNext').textContent = '다른 판 (' + round + '판)';
+      pause(); reset();
+    });
 
     document.getElementById('spd').addEventListener('click', function (e) {
       var b = e.target.closest('.chip');
@@ -1512,7 +1519,7 @@ var Observe = (function () {
      진행
      --------------------------------------------------------------- */
   function reset() {
-    sim = new E.Sim(App.params, { N: App.N, maxDays: App.maxDays });
+    sim = new E.Sim(App.params, { N: App.N, maxDays: App.maxDays, seed: 12345 + (round - 1) * 7919 });
     waves.length = 0;
     acc = 0;
     dirtyChart = true;
