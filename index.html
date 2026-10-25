@@ -385,7 +385,7 @@ td.wrap, th.wrap { white-space: normal; min-width: 170px; }
 
 
 /* PC 화면: 화면 전체를 1.35배로 키우고, 지도는 한 화면에 들어오게 */
-@media (min-width: 1100px) and (min-height: 700px) {
+@media (min-width: 1000px) and (min-height: 560px) {
   body { zoom: 1.35; }
   .view { max-width: min(1500px, calc(100vw / 1.35 - 30px)); }
   /* PC: 왼쪽 지도, 오른쪽 그래프 */
@@ -399,27 +399,22 @@ td.wrap, th.wrap { white-space: normal; min-width: 170px; }
 }
 
 
-/* PC: 오른쪽 숫자 칸, 버튼, 그래프 제목도 글씨 2배 */
-@media (min-width: 1100px) and (min-height: 700px) {
-  #view_observe .tile .k { font-size: 21.0px; gap: 8px; }
-  #view_observe .tile .n { font-size: 42.0px; }
-  #view_observe .tile .sub { font-size: 20.0px; }
-  #view_observe .tile .mk { width: 18px; height: 18px; }
-  #view_observe .tile { padding: 14px 18px; }
+/* PC: 관찰 화면 글씨를 화면 높이에 맞춰 크게 (뒷자리에서도 보이게) */
+@media (min-width: 1000px) and (min-height: 560px) {
+  #dayBadge { font-size: calc(4vh / 1.35); padding: calc(0.9vh / 1.35) calc(2vh / 1.35); border-radius: calc(1.6vh / 1.35); }
+  #spd { padding: calc(0.5vh / 1.35); border-radius: calc(1.6vh / 1.35); }
+  #spd .chip { font-size: calc(3.6vh / 1.35); padding: calc(0.8vh / 1.35) calc(1.6vh / 1.35); border-radius: calc(1.1vh / 1.35); }
+  #legend { padding: calc(1vh / 1.35) calc(1.8vh / 1.35); gap: calc(0.6vh / 1.35) calc(2.4vh / 1.35); border-radius: calc(1.6vh / 1.35); }
+  #legend .lg { font-size: calc(3.4vh / 1.35); gap: calc(1vh / 1.35); }
+  #legend .mk, #view_observe .tile .mk { width: calc(2.4vh / 1.35); height: calc(2.4vh / 1.35); }
+  #view_observe .tile { padding: calc(1.4vh / 1.35) calc(1.8vh / 1.35); }
+  #view_observe .tile .k { font-size: calc(3.4vh / 1.35); gap: calc(1vh / 1.35); }
+  #view_observe .tile .n { font-size: calc(6.6vh / 1.35); }
+  #view_observe .tile .sub { font-size: calc(3vh / 1.35); }
   #view_observe .controls { flex-wrap: nowrap; }
-  #view_observe .controls .btn { font-size: 22px; padding: 14px 10px; min-width: 0; flex: 1 1 0; white-space: nowrap; }
-  #view_observe .card > h2 { font-size: 25.0px; margin-bottom: 12px; }
-  #view_observe .card > h2 .chip { font-size: 24.0px; padding: 8px 16px; }
-}
-
-/* PC: 지도와 그래프 안의 글씨 2배 */
-@media (min-width: 1100px) and (min-height: 700px) {
-  #dayBadge { font-size: 24px; padding: 8px 18px; border-radius: 14px; }
-  #spd { padding: 5px; border-radius: 14px; }
-  #spd .chip { font-size: 22px; padding: 8px 16px; border-radius: 10px; }
-  #legend { padding: 9px 16px; gap: 6px 22px; border-radius: 14px; }
-  #legend .lg { font-size: 21px; gap: 9px; }
-  #legend .mk { width: 16px; height: 16px; }
+  #view_observe .controls .btn { font-size: calc(3.4vh / 1.35); padding: calc(1.5vh / 1.35) calc(1vh / 1.35); min-width: 0; flex: 1 1 0; white-space: nowrap; }
+  #view_observe .card > h2 { font-size: calc(3.6vh / 1.35); margin-bottom: calc(1.2vh / 1.35); }
+  #view_observe .card > h2 .chip { font-size: calc(3.2vh / 1.35); padding: calc(0.8vh / 1.35) calc(1.6vh / 1.35); }
 }
 </style>
 </head>
@@ -436,7 +431,7 @@ td.wrap, th.wrap { white-space: normal; min-width: 170px; }
   </main>
 </div>
 
-<script>window.__fs = window.matchMedia('(min-width: 1100px) and (min-height: 700px)').matches ? 2 : 1;</script>
+<script>window.__fs = window.matchMedia('(min-width: 1000px) and (min-height: 560px)').matches ? Math.max(1.6, window.innerHeight / 380) : 1;</script>
 <script>
 /* ===== engine.js ===== */
 /* =====================================================================
