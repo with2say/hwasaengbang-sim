@@ -167,8 +167,6 @@ body {
 .sl .hint { font-size: 11px; color: var(--muted); margin-top: 4px; display: none; line-height: 1.45; }
 .sl.open .hint { display: block; }
 .sl .name { cursor: pointer; border-bottom: 1px dotted var(--dim); }
-.sl.pick select { width: 100%; flex: none; margin-top: 4px; }
-.sl.pick { margin-bottom: 10px; }
 
 input[type=range] {
   -webkit-appearance: none; appearance: none;
@@ -197,7 +195,7 @@ input[type=range]::-moz-range-thumb {
   -webkit-overflow-scrolling: touch;
   padding: 9px 9px calc(12px + env(safe-area-inset-bottom));
 }
-.view { display: none; max-width: 760px; margin: 0 auto; }
+.view { display: none; max-width: 600px; margin: 0 auto; }
 .view.on { display: block; animation: fade .25s ease; }
 @keyframes fade { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
 
@@ -218,9 +216,8 @@ input[type=range]::-moz-range-thumb {
 
 #simWrap {
   position: relative;
-  width: 100%;
+  width: min(100%, 62vh, 560px);
   aspect-ratio: 1 / 1;
-  max-height: min(56vh, 520px);
   margin: 0 auto;
   border-radius: 13px;
   overflow: hidden;
@@ -356,8 +353,8 @@ td.wrap, th.wrap { white-space: normal; min-width: 170px; }
 }
 
 @media (max-width: 860px) {
-  #simWrap { max-height: 50vh; }
-  @supports (max-height: 50dvh) { #simWrap { max-height: min(50dvh, 440px); } }
+  #simWrap { width: min(100%, 50vh); }
+  @supports (width: 50dvh) { #simWrap { width: min(100%, 50dvh, 440px); } }
   .chartBox { height: 190px; }
   .chartBox.tall { height: 240px; }
   #stats { gap: 6px; }
@@ -419,17 +416,12 @@ td.wrap, th.wrap { white-space: normal; min-width: 170px; }
    각 값의 출처는 SOURCES 표에 그대로 적어 두었다.
    --------------------------------------------------------------- */
 var EFFECT = {
-  mask: 0.53,          // 종류를 가리지 않았을 때의 마스크 효과 (Chu DK et al., Lancet, 2020)
+  mask: 0.53,          // 마스크 착용 시 전파 53% 감소  (Chu DK et al., Lancet, 2020)
   distance: 0.82,      // 1 m 이상 거리두기 시 82% 감소 (Chu DK et al., Lancet, 2020)
-  hand: 0.20,          // 제대로 씻었을 때. 호흡기 감염 약 20% 감소 (Aiello AE et al., AJPH, 2008)
-  handPoor: 0.12,      // 대충 씻었을 때. 5초 물만 1.0 log, 20초 비누 1.7 log 제거를
-                       // 비례로 옮긴 추정 (Jensen DA et al., J Food Prot, 2015)
+  hand: 0.20,          // 손씻기 시 호흡기 감염 약 20% 감소 (Aiello AE et al., AJPH, 2008)
   vaccine: 0.92,       // mRNA 백신 2차 접종 감염예방 약 92% (CDC MMWR, 2021)
   micro: 0.12,         // 비타민 D 충분 섭취 시 급성호흡기감염 12% 감소 (Martineau AR et al., BMJ, 2017)
-  malnutrition: 1.5,   // 영양 결핍 시 감염 위험 최대 2.5배 (UNICEF/WHO Lancet 영양 시리즈, 2008)
-  waningBase: 135,     // 자연 감염 후 면역이 절반으로 줄 때까지 약 3에서 6개월 (Dan JM et al., Science, 2021)
-  waningNutri: 2.0,    // 영양 상태가 아주 좋으면 그 기간이 최대 2배 (우리 추정)
-  durNutri: 0.6        // 영양이 나쁘면 회복이 늦어져 옮기는 기간이 길어진다 (우리 추정)
+  malnutrition: 1.5    // 영양 결핍 시 감염 위험 최대 2.5배 (UNICEF/WHO Lancet 영양 시리즈, 2008)
 };
 
 /* ---------------------------------------------------------------
@@ -438,7 +430,7 @@ var EFFECT = {
 var VARS = [
   { key: 'beta',      region: '병원체', name: '감염력',        unit: 'pct',  min: 0.05, max: 0.80, step: 0.01, def: 0.28,
     desc: '한 번 접촉했을 때 아무 방어 수단이 없다고 볼 때의 기본 전파 확률' },
-  { key: 'toxicity',  region: '병원체', name: '독성',          unit: 'day',  min: 3,    max: 30,   step: 1,    def: 11,
+  { key: 'toxicity',  region: '병원체', name: '독성',          unit: 'day',  min: 3,    max: 30,   step: 1,    def: 12,
     desc: '독성이 셀수록 회복까지 오래 걸리고, 그만큼 남을 감염시킬 기간도 길어진다' },
   { key: 'mutation',  region: '병원체', name: '변이율',        unit: 'pct',  min: 0,    max: 1,    step: 0.01, def: 0.10,
     desc: '변이가 쌓이면 전파력이 조금씩 오르고 백신 효과는 조금씩 떨어진다' },
@@ -446,50 +438,16 @@ var VARS = [
     desc: '병원체를 가장 먼저 알아채는 선천면역 수용체가 얼마나 잘 작동하는지' },
   { key: 'vaccine',   region: '면역',   name: '백신 접종률',   unit: 'pct',  min: 0,    max: 1,    step: 0.01, def: 0.40,
     desc: '후천면역을 미리 만들어 둔 사람의 비율' },
-  { key: 'waning',    region: '면역',   name: '면역 유지 반감기', unit: 'day', min: 0,   max: 720,  step: 15,   def: 135,
-    desc: '한 번 나은 사람의 절반이 다시 걸릴 수 있는 상태로 돌아가기까지 걸리는 시간. 0으로 두면 평생 면역이 유지된다(예전 모형)' },
   { key: 'mask',      region: '위생',   name: '마스크 착용률', unit: 'pct',  min: 0,    max: 1,    step: 0.01, def: 0.50,
     desc: '병원체가 몸 안으로 들어오는 것을 막으므로 선천면역의 외부 방어를 돕는다' },
-  { key: 'maskType',  region: '위생',   name: '마스크 종류',   unit: 'pick', min: 0,   max: 5,    step: 1,    def: 0,
-    desc: '어떤 마스크를 쓰느냐에 따라 막아주는 정도가 크게 다르다. 천 마스크는 효과가 확인되지 않았다' },
-  { key: 'distance',  region: '위생',   name: '거리두기 준수율 (1 m 기준)', unit: 'pct', min: 0,   max: 1,    step: 0.01, def: 0.30,
-    desc: '1 m 이상 떨어졌을 때의 효과(82% 감소)를 준수율만큼 반영한다. 더 멀어지면 효과가 커지지만 이 모형은 1 m 만 쓴다' },
+  { key: 'distance',  region: '위생',   name: '거리두기 준수율', unit: 'pct', min: 0,   max: 1,    step: 0.01, def: 0.30,
+    desc: '1 m 이상 떨어졌을 때의 효과를 준수율만큼 반영한다' },
   { key: 'hand',      region: '위생',   name: '손씻기 준수율', unit: 'pct',  min: 0,    max: 1,    step: 0.01, def: 0.50,
-    desc: '손을 씻는 사람의 비율. 얼마나 제대로 씻는지는 아래 슬라이더로 따로 정한다' },
-  { key: 'handProper', region: '위생',  name: '손씻기 제대로 비율', unit: 'pct', min: 0,   max: 1,    step: 0.01, def: 0.50,
-    desc: '손을 씻는 사람 중 15초에서 30초 동안 비누로 제대로 씻는 사람의 비율. 나머지는 5초 정도 물만 묻히고 나온다고 본다' },
+    desc: '접촉을 통한 전파를 줄인다' },
   { key: 'nutrition', region: '영양',   name: '영양 충족도',   unit: 'pct',  min: 0,    max: 1,    step: 0.01, def: 0.75,
     desc: '단백질과 열량이 모자라면 면역세포를 제대로 못 만들어 감염에 약해진다' },
   { key: 'micro',     region: '영양',   name: '미량영양소 충족도', unit: 'pct', min: 0, max: 1,    step: 0.01, def: 0.50,
-    desc: '비타민 D 같은 미량영양소가 충분할수록 호흡기 감염이 줄어든다' },
-  { key: 'nutriSd',   region: '영양',   name: '영양 격차',     unit: 'pct',  min: 0,    max: 0.35, step: 0.01, def: 0.15,
-    desc: '사람마다 영양 상태가 얼마나 벌어져 있는지. 0이면 모두 똑같고, 클수록 잘 먹는 사람과 못 먹는 사람의 차이가 커진다. 아래 20%를 영양 취약층으로 본다' }
-];
-
-/* 마스크는 종류에 따라 효과가 크게 갈린다. 착용률과 따로 고를 수 있게 해 둔다.
-   effect 는 감염 확률을 얼마나 깎는지이고, 착용률만큼만 인구에 적용된다.
-
-   basis 는 그 숫자가 어디서 왔는지다. 셋을 반드시 구분해서 써야 한다.
-     meas  실제로 감염 위험을 측정한 연구값
-     weak  측정은 했지만 통계적으로 유의하지 않았다
-     est   감염 위험을 잰 연구가 없어 우리가 추정한 값
-
-   추정은 포집효율 곱하기 (1 빼기 누설률) 로 했다. 이 식을 KF94 에 넣으면 0.84 가
-   나오는데, 실제로 측정된 0.83 과 거의 같아서 나머지 등급에도 같은 식을 썼다.
-   그래도 추정은 추정이다. 보고서에는 반드시 추정값이라고 밝혀야 한다. */
-var MASK_TYPES = [
-  { key: 'mixed',  name: '종류 섞임',   effect: 0.53, basis: 'meas',
-    ref: 'Chu DK et al., Lancet 2020. 종류를 나누지 않은 메타분석 값' },
-  { key: 'cloth',  name: '천 마스크',   effect: 0.56, basis: 'weak',
-    ref: 'Andrejko KL et al., MMWR 2022. aOR 0.44 (95% CI 0.17~1.17). 신뢰구간이 1을 넘어 효과가 있다고 말할 수 없다' },
-  { key: 'dental', name: '덴탈 마스크', effect: 0.66, basis: 'meas',
-    ref: 'Andrejko KL et al., MMWR 2022. 수술용 마스크 aOR 0.34 (95% CI 0.13~0.90)' },
-  { key: 'kf80',   name: 'KF80',       effect: 0.60, basis: 'est',
-    ref: '감염 위험을 직접 잰 연구가 없다. 식약처 기준 포집효율 80%, 누설률 25% 에서 0.80 곱하기 0.75 로 추정' },
-  { key: 'kf94',   name: 'KF94',       effect: 0.83, basis: 'meas',
-    ref: 'Andrejko KL et al., MMWR 2022. N95 / KN95 aOR 0.17 (95% CI 0.05~0.64). KF94 를 같은 등급으로 본 값' },
-  { key: 'kf99',   name: 'KF99',       effect: 0.94, basis: 'est',
-    ref: '감염 위험을 직접 잰 연구가 없다. 식약처 기준 포집효율 99%, 누설률 5% 에서 0.99 곱하기 0.95 로 추정' }
+    desc: '비타민 D 같은 미량영양소가 충분할수록 호흡기 감염이 줄어든다' }
 ];
 
 var REGIONS = ['병원체', '면역', '위생', '영양'];
@@ -519,11 +477,7 @@ var SCENARIOS = [
   { key: 'nutri',   name: '영양 개선',   note: '영양 상태와 미량영양소만 채운 경우',
     over: { nutrition: 1.0, micro: 1.0 } },
   { key: 'all',     name: '종합 방역',   note: '위생과 백신, 영양을 한꺼번에 올린 경우',
-    over: { mask: 0.90, distance: 0.80, hand: 0.90, vaccine: 0.90, nutrition: 1.0, micro: 1.0 } },
-  { key: 'gap',     name: '영양 격차',   note: '평균 영양은 그대로인데 잘 먹는 사람과 못 먹는 사람의 차이만 벌어진 경우',
-    over: { nutriSd: 0.30 } },
-  { key: 'lasting', name: '평생 면역',   note: '한 번 나으면 다시는 안 걸린다고 보던 예전 모형. 비교용',
-    over: { waning: 0, nutriSd: 0 } }
+    over: { mask: 0.90, distance: 0.80, hand: 0.90, vaccine: 0.90, nutrition: 1.0, micro: 1.0 } }
 ];
 
 function scenarioParams(key) {
@@ -557,53 +511,20 @@ function makeRandom(seed) {
    한 번 접촉했을 때 감염되려면 모든 방어 수단을 다 통과해야 하므로,
    각 방어 수단의 통과 확률을 곱한다.
    --------------------------------------------------------------- */
-function maskEffect(p) {
-  var t = MASK_TYPES[Math.round(p.maskType) | 0];
-  return (t ? t.effect : EFFECT.mask);
-}
-/* 손씻기 효과. 제대로 씻는 사람과 대충 씻는 사람을 비율대로 섞는다.
-   제대로만 100%면 0.20, 대충만 100%면 0.12 가 된다. */
-function handEffect(p) {
-  var q = (p.handProper === undefined) ? 1 : p.handProper;
-  return EFFECT.hand * q + EFFECT.handPoor * (1 - q);
-}
 function prrFactor(prr)           { return 1.4 - 0.8 * prr; }              // 0.6배에서 1.4배
 function nutritionFactor(n)       { return 1 + EFFECT.malnutrition * (1 - n); }  // 1배에서 2.5배
 function microFactor(m)           { return 1 - EFFECT.micro * m; }
-
-/* 개인의 영양 점수. 영양 충족도와 미량영양소를 반씩 섞어 0에서 1 사이로 만든다. */
-function nutriScore(nut, mic)     { return 0.5 * (nut + mic); }
-
-/* 영양이 좋을수록 면역이 오래 간다.
-   점수가 0.5인 사람이 기준이고 이때는 슬라이더에 적힌 반감기 그대로다.
-   0.75면 1.5배, 1이면 2배로 늘어난다. 아주 나쁘면 절반까지 줄어든다.
-   1.5배에서 2배로 늘린다는 부분은 우리가 정한 추정값이다. */
-function immunityMult(q)          { return Math.max(0.5, EFFECT.waningNutri * q); }
-
-/* 영양이 나쁘면 회복이 늦어진다. 그만큼 남에게 옮기는 기간도 길어진다.
-   점수 0.5 이상이면 그대로이고, 0이면 1.3배까지 늘어난다. 이것도 우리 추정값이다. */
-function durationMult(q)          { return 1 + EFFECT.durNutri * Math.max(0, 0.5 - q); }
-
-/* 영양 상태 때문에 이 사람의 감염 위험이 몇 배가 되는지 */
-function personRisk(nut, mic)     { return nutritionFactor(nut) * microFactor(mic); }
-
-function clamp01(v)               { return v < 0 ? 0 : (v > 1 ? 1 : v); }
-
-/* 표준정규분포 난수. 개인별 영양 상태를 종 모양으로 흩뿌리는 데 쓴다 */
-function gauss(rnd) {
-  var u = 1 - rnd(), v = rnd();
-  return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
-}
 function betaAtDay(beta, mut, d)  { return beta * Math.min(2, 1 + 0.6 * mut * (d / 60)); }
 function vaccineAtDay(mut, d)     { return Math.max(0.30, EFFECT.vaccine * (1 - 0.6 * mut * (d / 60))); }
 
-/* 방어 수단을 모두 통과할 확률 중에서 인구 전체가 똑같이 나눠 갖는 부분.
-   백신과 영양은 사람마다 다르므로 여기 넣지 않고 개인별로 따로 곱한다. */
+/* 방어 수단을 모두 통과할 확률. 백신은 개인별로 다르므로 따로 곱한다. */
 function envMultiplier(p) {
-  return (1 - maskEffect(p) * p.mask)
+  return (1 - EFFECT.mask * p.mask)
        * (1 - EFFECT.distance * p.distance)
-       * (1 - handEffect(p) * p.hand)
-       * prrFactor(p.prr);
+       * (1 - EFFECT.hand * p.hand)
+       * prrFactor(p.prr)
+       * nutritionFactor(p.nutrition)
+       * microFactor(p.micro);
 }
 
 /* ---------------------------------------------------------------
@@ -624,7 +545,7 @@ var SIM_DEFAULTS = {
   subSteps: 2,      // 하루에 접촉이 일어나는 횟수
   maxDays: 360,     // 관찰 기간
   seeds: 3,         // 최초 감염자 수
-  latent: 5         // 잠복기. 이 기간에는 감염됐지만 아직 남한테 못 옮긴다
+  latent: 6         // 잠복기. 이 기간에는 감염됐지만 아직 남한테 못 옮긴다
 };
 
 function Sim(params, opts) {
@@ -651,16 +572,6 @@ function Sim(params, opts) {
   this.vacc = new Uint8Array(N);
   this.timer = new Float32Array(N);
 
-  /* 사람마다 다른 영양 상태와 거기서 나오는 값들 */
-  this.nut = new Float32Array(N);      // 영양 충족도
-  this.mic = new Float32Array(N);      // 미량영양소 충족도
-  this.qs = new Float32Array(N);       // 둘을 합친 영양 점수
-  this.risk = new Float32Array(N);     // 감염 위험 배수
-  this.durMul = new Float32Array(N);   // 회복까지 걸리는 기간 배수
-  this.pLoss = new Float32Array(N);    // 한 걸음마다 면역이 풀릴 확률
-  this.vuln = new Uint8Array(N);       // 영양 취약층(아래 20%)이면 1
-  this.everInf = new Uint8Array(N);    // 한 번이라도 걸린 적이 있으면 1
-
   // 공간 해시 (접촉 상대를 빠르게 찾기 위한 격자)
   this.cell = this.contactR;
   this.gw = Math.ceil(this.W / this.cell) + 1;
@@ -673,42 +584,7 @@ function Sim(params, opts) {
 
 Sim.prototype.reset = function () {
   var N = this.N, W = this.W, r = this.rand;
-
-  /* 영양 상태를 정규분포로 흩뿌린다.
-     슬라이더 값이 평균이고 영양 격차가 표준편차다. 0과 1을 넘지 않게 자른다.
-     영양 충족도와 미량영양소는 같은 방향으로 움직이게 했다.
-     잘 먹는 사람이 비타민도 잘 챙기는 쪽이 현실에 가깝기 때문이다. */
-  var sd = this.p.nutriSd || 0;
-  var dt0 = 1 / this.subSteps;
   for (var i = 0; i < N; i++) {
-    var z = sd > 0 ? gauss(r) : 0;
-    var nut = clamp01(this.p.nutrition + sd * z);
-    var mic = clamp01(this.p.micro + sd * z);
-    var q = nutriScore(nut, mic);
-    this.nut[i] = nut;
-    this.mic[i] = mic;
-    this.qs[i] = q;
-    this.risk[i] = personRisk(nut, mic);
-    this.durMul[i] = durationMult(q);
-    /* 면역 반감기. 영양이 좋을수록 길어진다.
-       H 일이 지나면 회복자의 절반만 면역이 남는다는 뜻이라
-       한 걸음(dt0 일)마다 풀릴 확률은 1 빼기 0.5의 dt0 나누기 H 제곱이 된다. */
-    var H = this.p.waning > 0 ? this.p.waning * immunityMult(q) : 0;
-    this.pLoss[i] = H > 0 ? 1 - Math.pow(0.5, dt0 / H) : 0;
-    this.everInf[i] = 0;
-  }
-
-  /* 영양 점수가 아래 20%인 사람을 취약층으로 표시한다.
-     모두가 똑같은 영양 상태면 취약층을 나눌 수 없으므로 아무도 표시하지 않는다. */
-  if (sd > 0) {
-    var sorted = Array.prototype.slice.call(this.qs).sort(function (a, b) { return a - b; });
-    var thr = sorted[Math.max(0, Math.floor(N * 0.2) - 1)];
-    for (i = 0; i < N; i++) this.vuln[i] = this.qs[i] <= thr ? 1 : 0;
-  } else {
-    this.vuln.fill(0);
-  }
-
-  for (i = 0; i < N; i++) {
     this.x[i] = this.px[i] = r() * W;
     this.y[i] = this.py[i] = r() * W;
     this.ang[i] = r() * Math.PI * 2;
@@ -723,23 +599,11 @@ Sim.prototype.reset = function () {
   var seeded = 0;
   while (seeded < this.seeds) {
     var idx = (r() * N) | 0;
-    if (this.status[idx] === S_STATE) {
-      this.status[idx] = I_STATE; this.timer[idx] = 0; this.everInf[idx] = 1; seeded++;
-    }
+    if (this.status[idx] === S_STATE) { this.status[idx] = I_STATE; this.timer[idx] = 0; seeded++; }
   }
   this.day = 0;
   this.sub = 0;
-  this.totalInfected = seeded;   // 한 번이라도 걸린 사람 수
-  this.cases = seeded;           // 총 감염 건수 (재감염을 따로 셈)
-  this.reinf = 0;                // 그중 재감염 건수
-  this.spreadVuln = 0;           // 영양 취약층이 옮긴 건수
-  this.vulnCases = 0;            // 영양 취약층이 걸린 건수
-  /* 유행 초기 90일치는 따로 센다.
-     인구 대부분이 걸리고 나면 누가 옮겼든 비율이 20%로 수렴하기 때문에
-     취약층이 불씨 역할을 하는지는 초기 구간에서만 제대로 보인다. */
-  this.spreadVulnEarly = 0;
-  this.spreadAllEarly = 0;
-  this.spreadAll = 0;            // 사람이 사람에게 옮긴 건수 (최초 감염자 제외)
+  this.totalInfected = seeded;
   this.peakI = seeded;
   this.peakDay = 0;
   this.endDay = -1;
@@ -795,6 +659,7 @@ Sim.prototype.subStep = function () {
   var beta = betaAtDay(this.p.beta, this.p.mutation, this.day);
   var vEff = vaccineAtDay(this.p.mutation, this.day);
   var pBase = beta * this.env;
+  var pVacc = pBase * (1 - vEff);
   var R2 = this.contactR * this.contactR;
   var gw = this.gw, cell = this.cell, head = this.head, next = this.next;
 
@@ -812,22 +677,11 @@ Sim.prototype.subStep = function () {
           if (this.status[b] !== S_STATE) continue;
           var ddx = ax - this.x[b], ddy = ay - this.y[b];
           if (ddx * ddx + ddy * ddy > R2) continue;
-          /* 영양 상태가 나쁜 사람일수록 같은 접촉에서도 더 잘 걸린다 */
-          var p = pBase * this.risk[b];
-          if (this.vacc[b]) p *= (1 - vEff);
+          var p = this.vacc[b] ? pVacc : pBase;
           if (r() < p) {
             this.status[b] = E_STATE;      // 바로 옮기지는 못하고 잠복기부터 시작
             this.timer[b] = 0;
-            this.cases++;
-            this.spreadAll++;
-            if (this.vuln[a]) this.spreadVuln++;
-            if (this.vuln[b]) this.vulnCases++;
-            if (this.day < 90) {
-              this.spreadAllEarly++;
-              if (this.vuln[a]) this.spreadVulnEarly++;
-            }
-            if (this.everInf[b]) this.reinf++;
-            else { this.everInf[b] = 1; this.totalInfected++; }
+            this.totalInfected++;
             if (this.newInfections.length < 80) this.newInfections.push(b);
           }
         }
@@ -844,15 +698,7 @@ Sim.prototype.subStep = function () {
       if (this.timer[c2] >= this.latent) { this.status[c2] = I_STATE; this.timer[c2] = 0; }
     } else if (st === I_STATE) {
       this.timer[c2] += dt;
-      /* 영양이 나쁘면 회복이 늦고 그만큼 오래 옮긴다 */
-      if (this.timer[c2] >= this.p.toxicity * this.durMul[c2]) {
-        this.status[c2] = R_STATE;
-        this.timer[c2] = 0;
-      }
-    } else if (st === R_STATE) {
-      /* 면역 감퇴. 반감기가 지나면 절반이 다시 걸릴 수 있는 상태로 돌아간다 */
-      var pl = this.pLoss[c2];
-      if (pl > 0 && r() < pl) { this.status[c2] = S_STATE; this.timer[c2] = 0; }
+      if (this.timer[c2] >= this.p.toxicity) this.status[c2] = R_STATE;
     }
   }
 
@@ -899,12 +745,7 @@ function runOnce(params, opts) {
   while (!sim.done()) sim.subStep();
   var c = sim.counts();
   return {
-    attackRate: sim.totalInfected / sim.N,   // 한 번이라도 걸린 사람의 비율
-    caseRate: sim.cases / sim.N,             // 1인당 평균 감염 횟수 (재감염을 다 셈)
-    reinfRate: sim.reinf / sim.N,            // 1인당 평균 재감염 횟수
-    vulnShare: sim.spreadAll > 0 ? sim.spreadVuln / sim.spreadAll : 0,  // 영양 취약층이 옮긴 비율
-    vulnCaseShare: sim.cases > 0 ? sim.vulnCases / sim.cases : 0,       // 영양 취약층이 걸린 비율
-    vulnShareEarly: sim.spreadAllEarly > 0 ? sim.spreadVulnEarly / sim.spreadAllEarly : 0,  // 초기 90일 전파 비율
+    attackRate: sim.totalInfected / sim.N,   // 총 감염률
     peakRate: sim.peakI / sim.N,             // 최대 동시 감염률
     peakDay: sim.peakDay,
     endDay: sim.endDay >= 0 ? sim.endDay : sim.maxDays,
@@ -917,7 +758,7 @@ function runOnce(params, opts) {
 function runRepeats(params, reps, opts, seed0) {
   opts = opts || {};
   seed0 = seed0 || 1000;
-  var keys = ['attackRate', 'caseRate', 'reinfRate', 'vulnShare', 'vulnCaseShare', 'vulnShareEarly', 'peakRate', 'peakDay', 'endDay'];
+  var keys = ['attackRate', 'peakRate', 'peakDay', 'endDay'];
   var acc = {}, i, k;
   for (k = 0; k < keys.length; k++) acc[keys[k]] = [];
   for (i = 0; i < reps; i++) {
@@ -942,54 +783,31 @@ function runRepeats(params, reps, opts, seed0) {
    7. 출처 표
    --------------------------------------------------------------- */
 var SOURCES = [
-  { item: '코로나19 초기 R0 (문헌값)', value: 'R0 2.2 (95% CI 1.4~3.9)', ref: 'Li Q et al., N Engl J Med 382:1199, 2020. 우한 초기 확진자 425명 분석' },
-  { item: '코로나19 초기 R0 (문헌값)', value: 'R0 2.68 (95% CrI 2.47~2.86)', ref: 'Wu JT, Leung K, Leung GM, Lancet 395:689, 2020. 수리 모델 추정' },
-  { item: '코로나19 초기 감염력', value: '기본 전파 확률(beta) 28%로 설정', ref: '문헌값을 그대로 넣은 것이 아니라 사전 반복 테스트로 맞춘 모델 내부 보정값. 사후 검증 결과 본 모델의 R0 는 약 4.1~4.4 로, 위 문헌값보다 높다. 2차원 격자 접촉 가정 때문으로 보이며 한계점에 적는다' },
-  { item: '잠복기 5일', value: '잠복기 중앙값 5.1일 (95% CI 4.5~5.8)', ref: 'Lauer SA et al., Ann Intern Med 172:577, 2020. 확진자 181명. Li Q et al. 2020 의 평균 5.2일(95% CI 4.1~7.0)과도 일치' },
-  { item: '전파 가능 기간 (독성 11일)', value: '살아있는 바이러스가 발병 9일 이후로는 검출되지 않음', ref: 'Cevik M et al., Lancet Microbe 2:e13, 2021 (79개 연구 5340명 메타분석). 다만 우리 모델의 11일은 이 9일보다 길다. 증상 발현 전 전파(2차 감염의 44%, He X et al., Nat Med 26:672, 2020)를 함께 담기 위해 늘려 잡은 값이다' },
   { item: '마스크 착용', value: '전파 53% 감소', ref: 'Chu DK et al., Lancet 395:1973, 2020 (메타분석)' },
   { item: '거리두기 1 m 이상', value: '82% 감소', ref: 'Chu DK et al., Lancet 395:1973, 2020 (메타분석)' },
-  { item: '마스크 종류별 효과', value: 'N95 / KN95 83% 감소, 수술용 66% 감소, 천 마스크는 유의하지 않음', ref: 'Andrejko KL et al., MMWR 71:212, 2022 (캘리포니아 사례대조)' },
-  { item: 'KF 등급 기준', value: '포집효율 KF80 80%, KF94 94%, KF99 99% 이상 / 누설률 25%, 11%, 5% 이하', ref: '식품의약품안전처 보건용 마스크 기준규격' },
-  { item: '손씻기 (제대로 씻었을 때)', value: '호흡기 감염 약 20% 감소', ref: 'Aiello AE et al., Am J Public Health 98:1372, 2008' },
-  { item: '씻는 시간에 따른 세균 제거량', value: '5초 물만 1.0 log 감소, 20초 비누 1.7 log 감소', ref: 'Jensen DA et al., J Food Prot 78:685, 2015. 손에 묻은 세균을 잰 값이고 감염 위험을 잰 값이 아니다' },
-  { item: '대충 씻었을 때의 효과 (12% 감소)', value: '제대로 씻었을 때의 20% 를 제거량 비율(1.0 나누기 1.7)로 줄인 값', ref: '직접 잰 연구를 찾지 못했다. 위 두 연구를 우리가 이어 붙인 추정값이다' },
+  { item: '손씻기', value: '호흡기 감염 약 20% 감소', ref: 'Aiello AE et al., Am J Public Health 98:1372, 2008' },
   { item: 'mRNA 백신 2차 접종', value: '감염 예방 약 92%', ref: 'CDC MMWR 70:495, 2021' },
   { item: '비타민 D 충분 섭취', value: '급성 호흡기 감염 12% 감소', ref: 'Martineau AR et al., BMJ 356:i6583, 2017 (메타분석)' },
   { item: '영양 결핍', value: '감염 위험 최대 2.5배', ref: 'UNICEF/WHO, Lancet 영양과 면역 시리즈, 2008' },
-  { item: '감염 후 면역 유지 기간', value: '항체와 T세포 기억이 감염 뒤 6에서 8개월까지 남지만 서서히 줄어든다', ref: 'Dan JM et al., Science 371:eabf4063, 2021' },
-  { item: '감염 이력자의 재감염 위험', value: '이력이 없는 사람보다 84% 낮았고 중앙값 200일까지 추적', ref: 'Hall VJ et al., Lancet 397:1459, 2021 (SIREN 코호트)' },
-  { item: '접종 후 항체 감소', value: '2차 접종 6개월 뒤 중화항체가가 뚜렷하게 낮아짐', ref: 'Doria-Rose NA et al., N Engl J Med 384:2259, 2021. 자연 감염이 아니라 백신 접종자 대상이다' },
-  { item: '영양 상태에 따른 면역 유지 기간', value: '영양 점수가 높으면 반감기 1.5배에서 2배', ref: '직접 잰 연구를 찾지 못했다. 지웡이 제안한 설정을 우리가 식으로 옮긴 추정값이다' },
-  { item: '영양 상태에 따른 회복 지연', value: '영양이 나쁘면 회복 기간 최대 1.3배', ref: '직접 잰 연구를 찾지 못했다. 우리 추정값이다' },
-  { item: '개인별 영양 상태의 흩어짐', value: '정규분포로 흩뿌리고 아래 20%를 취약층으로 봄', ref: '질병관리청 국민건강영양조사의 영양섭취부족자 비율을 참고한 설정값. 정확한 연도별 수치는 확인이 필요하다' },
-  { item: '감염병 수리 모델의 기본 틀', value: 'SIR 구획 모형, 면역이 풀리는 경우는 SIRS', ref: 'Kermack WO, McKendrick AG, Proc R Soc A 115:700, 1927' },
+  { item: '감염병 수리 모델의 기본 틀', value: 'SIR 구획 모형', ref: 'Kermack WO, McKendrick AG, Proc R Soc A 115:700, 1927' },
   { item: '선천면역과 후천면역 개념', value: 'PRR, 항원 제시, 기억세포', ref: '고등학교 생명과학 II 교과서 III단원' },
   { item: '3변수 시뮬레이션 원형', value: '마스크, 거리두기, 백신', ref: '팀원 방학숙제, 2026.02' }
 ];
 
 /* 값 표시 형식 */
 function formatValue(key, v) {
-  if (key === 'maskType') {
-    var t = MASK_TYPES[Math.round(v) | 0];
-    return t ? t.name : '종류 섞임';
-  }
   if (key === 'toxicity') return Math.round(v) + '일';
-  if (key === 'waning') return v <= 0 ? '평생 유지' : Math.round(v) + '일';
   return Math.round(v * 100) + '%';
 }
 
 /* 다른 모듈은 모두 이 E 하나로만 엔진에 접근한다 */
 var E = {
   EFFECT: EFFECT, VARS: VARS, REGIONS: REGIONS, SCENARIOS: SCENARIOS, SOURCES: SOURCES, LABELS: LABELS,
-  MASK_TYPES: MASK_TYPES, maskEffect: maskEffect, handEffect: handEffect,
   SIM_DEFAULTS: SIM_DEFAULTS,
   defaultParams: defaultParams, scenarioParams: scenarioParams,
   Sim: Sim, runOnce: runOnce, runRepeats: runRepeats,
   envMultiplier: envMultiplier, formatValue: formatValue, makeRandom: makeRandom,
-  prrFactor: prrFactor, nutritionFactor: nutritionFactor, microFactor: microFactor,
-  nutriScore: nutriScore, immunityMult: immunityMult, durationMult: durationMult,
-  personRisk: personRisk
+  prrFactor: prrFactor, nutritionFactor: nutritionFactor, microFactor: microFactor
 };
 
 
@@ -1304,14 +1122,6 @@ var Panel = (function () {
     var d = els[key];
     if (!d) return;
     var v = App.params[key];
-    if (d.def.unit === 'pick') {
-      d.input.value = String(Math.round(v));
-      var t = E.MASK_TYPES[Math.round(v) | 0];
-      if (d.ref && t) {
-        d.ref.textContent = '감염 확률 ' + Math.round(t.effect * 100) + '% 감소. ' + t.ref;
-      }
-      return;
-    }
     d.input.value = v;
     d.val.textContent = E.formatValue(key, v);
     d.input.style.setProperty('--pct', (((v - d.def.min) / (d.def.max - d.def.min)) * 100) + '%');
@@ -1370,22 +1180,6 @@ var Panel = (function () {
     E.REGIONS.forEach(function (reg) {
       html += '<div class="region" data-r="' + reg + '"><div class="region-title"><i></i>' + reg + '</div>';
       E.VARS.filter(function (v) { return v.region === reg; }).forEach(function (v) {
-        if (v.unit === 'pick') {
-          /* 고르는 변수는 슬라이더 대신 드롭다운으로 낸다 */
-          var opts = '';
-          E.MASK_TYPES.forEach(function (t, i) {
-            var tag = (t.basis === 'weak') ? ' (근거 불충분)'
-                    : (t.basis === 'est')  ? ' (추정값)' : '';
-            opts += '<option value="' + i + '">' + t.name + tag + '</option>';
-          });
-          html += '<div class="sl pick" data-k="' + v.key + '">' +
-            '<label><span class="name">' + v.name + '</span></label>' +
-            '<select id="i_' + v.key + '">' + opts + '</select>' +
-            '<div class="hint">' + v.desc + '</div>' +
-            '<div class="note" id="r_' + v.key + '" style="margin-top:6px"></div>' +
-            '</div>';
-          return;
-        }
         html += '<div class="sl" data-k="' + v.key + '">' +
           '<label><span class="name">' + v.name + '</span><span class="v" id="v_' + v.key + '"></span></label>' +
           '<input type="range" id="i_' + v.key + '" min="' + v.min + '" max="' + v.max + '" step="' + v.step + '">' +
@@ -1407,13 +1201,8 @@ var Panel = (function () {
     /* 슬라이더 연결 */
     E.VARS.forEach(function (v) {
       var input = document.getElementById('i_' + v.key);
-      els[v.key] = {
-        input: input,
-        val: document.getElementById('v_' + v.key),
-        ref: document.getElementById('r_' + v.key),
-        def: v
-      };
-      input.addEventListener(v.unit === 'pick' ? 'change' : 'input', function () {
+      els[v.key] = { input: input, val: document.getElementById('v_' + v.key), def: v };
+      input.addEventListener('input', function () {
         App.params[v.key] = parseFloat(input.value);
         syncOne(v.key);
         markActiveChip();
@@ -1570,7 +1359,6 @@ var Observe = (function () {
           tile('i', E.LABELS.I, 'nI') +
           tile('r', E.LABELS.R, 'nR') +
         '</div>' +
-        '<div class="note" id="nExtra" style="margin-top:8px"></div>' +
         '<div class="controls">' +
           '<button class="btn primary" type="button" id="btnRun">시작</button>' +
           '<button class="btn" type="button" id="btnRe">초기화</button>' +
@@ -1924,20 +1712,6 @@ var Observe = (function () {
   function updateStats() {
     var c = sim.counts(), N = sim.N;
     set('nS', c.S, N); set('nI', c.I, N); set('nR', c.R, N);
-
-    /* 회복이 다시 정상으로 돌아가는 모형이라 사람 수만으로는 전체 규모를 알 수 없다.
-       그래서 걸린 사람 수와 걸린 횟수를 따로 적어 준다. */
-    var e = document.getElementById('nExtra');
-    if (!e) return;
-    var txt = '한 번이라도 걸린 사람 ' + sim.totalInfected.toLocaleString() + '명' +
-              ' (' + Math.round(sim.totalInfected / N * 100) + '%)' +
-              ', 총 감염 ' + sim.cases.toLocaleString() + '건' +
-              ', 그중 재감염 ' + sim.reinf.toLocaleString() + '건';
-    if (sim.spreadAll > 0 && App.params.nutriSd > 0) {
-      txt += ', 인구의 20%인 영양 취약층이 옮긴 몫 ' +
-             Math.round(sim.spreadVuln / sim.spreadAll * 100) + '%';
-    }
-    e.textContent = txt;
   }
 
   function set(id, v, N) {
