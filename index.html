@@ -389,7 +389,8 @@ td.wrap, th.wrap { white-space: normal; min-width: 170px; }
   body { zoom: 1.35; }
   .view { max-width: min(1500px, calc(100vw / 1.35 - 30px)); }
   /* PC: 왼쪽 지도, 오른쪽 그래프 */
-  #view_observe.on { display: grid; grid-template-columns: auto 1fr; gap: 12px; align-items: stretch; }
+  #view_observe.on { display: grid; grid-template-columns: auto 1fr; gap: 12px; align-items: stretch; height: calc((100vh - 100px) / 1.35); }
+  #view_observe > .card:nth-child(1) { display: flex; align-items: center; justify-content: center; }
   #view_observe > .card:nth-child(2) #stats { margin-top: 0; margin-bottom: 8px; }
   #view_observe > .card:nth-child(2) .controls { margin-bottom: 12px; }
   #view_observe > .card { margin: 0; }
@@ -401,12 +402,14 @@ td.wrap, th.wrap { white-space: normal; min-width: 170px; }
 
 /* PC: 관찰 화면 글씨를 화면 높이에 맞춰 크게 (뒷자리에서도 보이게) */
 @media (min-width: 1000px) and (min-height: 560px) {
-  #dayBadge { font-size: calc(3.6vh / 1.35); padding: calc(0.81vh / 1.35) calc(1.8vh / 1.35); border-radius: calc(1.44vh / 1.35); }
-  #spd { padding: calc(0.45vh / 1.35); border-radius: calc(1.44vh / 1.35); }
-  #spd .chip { font-size: calc(3.24vh / 1.35); padding: calc(0.72vh / 1.35) calc(1.44vh / 1.35); border-radius: calc(0.99vh / 1.35); }
-  #legend { padding: calc(0.9vh / 1.35) calc(1.62vh / 1.35); gap: calc(0.54vh / 1.35) calc(2.16vh / 1.35); border-radius: calc(1.44vh / 1.35); }
-  #legend .lg { font-size: calc(3.06vh / 1.35); gap: calc(0.9vh / 1.35); }
-  #legend .mk, #view_observe .tile .mk { width: calc(2.16vh / 1.35); height: calc(2.16vh / 1.35); }
+  #simWrap { container-type: inline-size; }
+  #dayBadge { font-size: 5.6cqw; padding: 1.2cqw 2.6cqw; border-radius: 2cqw; }
+  #spd { padding: 0.7cqw; border-radius: 2cqw; }
+  #spd .chip { font-size: 5cqw; padding: 1cqw 2.2cqw; border-radius: 1.4cqw; }
+  #legend { padding: 1.3cqw 2.4cqw; gap: 0.8cqw 3.2cqw; border-radius: 2cqw; }
+  #legend .lg { font-size: 4.8cqw; gap: 1.3cqw; }
+  #legend .mk { width: 3.4cqw; height: 3.4cqw; }
+  #view_observe .tile .mk { width: calc(2.16vh / 1.35); height: calc(2.16vh / 1.35); }
   #view_observe .tile { padding: calc(1.09vh / 1.35) calc(1.4vh / 1.35); }
   #view_observe .tile .k { font-size: calc(2.65vh / 1.35); gap: calc(0.78vh / 1.35); }
   #view_observe .tile .n { font-size: calc(5.15vh / 1.35); }
@@ -1869,8 +1872,8 @@ var App = {
     var padY = parseFloat(cs.paddingTop) + parseFloat(cs.paddingBottom);
     var padX = parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight);
     var top = left.getBoundingClientRect().top / z;
-    var availH = window.innerHeight / z - top - padY - 12;
-    var availW = (view.clientWidth - 12) * 0.6 - padX;
+    var availH = left.clientHeight - padY;
+    var availW = (view.clientWidth - 12) * 0.38 - padX;
     var size = Math.max(200, Math.floor(Math.min(availW, availH)));
     if (w.style.width !== size + 'px') { w.style.width = size + 'px'; window.dispatchEvent(new Event('resize')); }
   }
