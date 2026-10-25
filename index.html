@@ -398,25 +398,6 @@ td.wrap, th.wrap { white-space: normal; min-width: 170px; }
   #simWrap { width: min(100%, calc((100vh - 330px) / 1.35)); }
 }
 
-/* 지도 전체화면 */
-#fsBtn { position: absolute; left: 10px; bottom: 44px; z-index: 5; border: 1px solid var(--line); background: rgba(8,12,22,.72);
-  color: var(--ink); border-radius: 9px; padding: 5px 10px; font: inherit; font-size: 12px; font-weight: 700; cursor: pointer; }
-body.simfs { zoom: 1 !important; overflow: hidden; }
-body.simfs *:has(#simWrap), body.simfs .card { backdrop-filter: none !important; -webkit-backdrop-filter: none !important; transform: none !important; filter: none !important; contain: none !important; }
-body.simfs::before { content: ""; position: fixed; inset: 0; background: #070b14; z-index: 9998; }
-body.simfs #simWrap { position: fixed !important; z-index: 9999; left: 50%; top: 50%; transform: translate(-50%, -50%);
-  width: min(100vw, 100vh) !important; max-width: none; max-height: none; margin: 0; border-radius: 0; }
-
-/* PC: 지도와 그래프 안의 글씨 2배 */
-@media (min-width: 1100px) and (min-height: 700px) {
-  #dayBadge { font-size: 24px; padding: 8px 18px; border-radius: 14px; }
-  #spd { padding: 5px; border-radius: 14px; }
-  #spd .chip { font-size: 22px; padding: 8px 16px; border-radius: 10px; }
-  #legend { padding: 9px 16px; gap: 6px 22px; border-radius: 14px; }
-  #legend .lg { font-size: 21px; gap: 9px; }
-  #legend .mk { width: 16px; height: 16px; }
-  #fsBtn { font-size: 22px; padding: 8px 16px; border-radius: 12px; bottom: 70px; }
-}
 </style>
 </head>
 <body>
@@ -1850,32 +1831,6 @@ var App = {
   else init();
 })();
 
-</script>
-<script>
-(function () {
-  function addBtn() {
-    var w = document.getElementById('simWrap');
-    if (!w || document.getElementById('fsBtn')) return !!w;
-    var root = document.documentElement;
-    var b = document.createElement('button');
-    b.id = 'fsBtn'; b.type = 'button'; b.textContent = '⛶ 전체화면';
-    function isFs() { return document.fullscreenElement || document.webkitFullscreenElement || document.body.classList.contains('simfs'); }
-    function toggle() {
-      if (document.fullscreenElement || document.webkitFullscreenElement) { (document.exitFullscreen || document.webkitExitFullscreen).call(document); }
-      else if (document.body.classList.contains('simfs')) { document.body.classList.remove('simfs'); sync(); }
-      else if (root.requestFullscreen || root.webkitRequestFullscreen) { (root.requestFullscreen || root.webkitRequestFullscreen).call(root); }
-      else { document.body.classList.toggle('simfs'); sync(); }
-    }
-    b.addEventListener('click', function (e) { e.stopPropagation(); toggle(); });
-    w.addEventListener('dblclick', toggle);
-    function sync() { var on = !!(document.fullscreenElement || document.webkitFullscreenElement); if (document.fullscreenElement !== undefined || document.webkitFullscreenElement !== undefined) { if (root.requestFullscreen || root.webkitRequestFullscreen) document.body.classList.toggle('simfs', on); } b.textContent = isFs() ? '✕ 닫기' : '⛶ 전체화면'; window.dispatchEvent(new Event('resize')); }
-    document.addEventListener('fullscreenchange', sync);
-    document.addEventListener('webkitfullscreenchange', sync);
-    w.appendChild(b);
-    return true;
-  }
-  var tries = 0, t = setInterval(function () { if (addBtn() || ++tries > 50) clearInterval(t); }, 200);
-})();
 </script>
 <script>
 /* PC: 숫자 칸과 버튼은 오른쪽 그래프 위로 옮기고, 지도는 왼쪽에 화면 높이만큼 꽉 차게 */
