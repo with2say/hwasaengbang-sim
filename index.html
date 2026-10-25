@@ -406,6 +406,17 @@ body.simfs *:has(#simWrap), body.simfs .card { backdrop-filter: none !important;
 body.simfs::before { content: ""; position: fixed; inset: 0; background: #070b14; z-index: 9998; }
 body.simfs #simWrap { position: fixed !important; z-index: 9999; left: 50%; top: 50%; transform: translate(-50%, -50%);
   width: min(100vw, 100vh) !important; max-width: none; max-height: none; margin: 0; border-radius: 0; }
+
+/* PC: 지도와 그래프 안의 글씨 2배 */
+@media (min-width: 1100px) and (min-height: 700px) {
+  #dayBadge { font-size: 24px; padding: 8px 18px; border-radius: 14px; }
+  #spd { padding: 5px; border-radius: 14px; }
+  #spd .chip { font-size: 22px; padding: 8px 16px; border-radius: 10px; }
+  #legend { padding: 9px 16px; gap: 6px 22px; border-radius: 14px; }
+  #legend .lg { font-size: 21px; gap: 9px; }
+  #legend .mk { width: 16px; height: 16px; }
+  #fsBtn { font-size: 22px; padding: 8px 16px; border-radius: 12px; bottom: 70px; }
+}
 </style>
 </head>
 <body>
@@ -421,6 +432,7 @@ body.simfs #simWrap { position: fixed !important; z-index: 9999; left: 50%; top:
   </main>
 </div>
 
+<script>window.__fs = window.matchMedia('(min-width: 1100px) and (min-height: 700px)').matches ? 2 : 1;</script>
 <script>
 /* ===== engine.js ===== */
 /* =====================================================================
@@ -882,7 +894,7 @@ var Charts = (function () {
     ctx.strokeStyle = 'rgba(255,255,255,0.06)';
     ctx.lineWidth = 1;
     ctx.fillStyle = css('--muted');
-    ctx.font = '10px system-ui, sans-serif';
+    ctx.font = '' + (10 * (window.__fs || 1)) + 'px system-ui, sans-serif';
 
     var i, ticks = 4;
     for (i = 0; i <= ticks; i++) {
@@ -905,7 +917,7 @@ var Charts = (function () {
      ------------------------------------------------------------- */
   function seir(cv, hist, N, mode) {
     var f = fit(cv), ctx = f.ctx;
-    var box = { l: 40, t: 12, w: f.w - 52, h: f.h - 34 };
+    var F = window.__fs || 1; var box = { l: 40 * F, t: 12 * F, w: f.w - 40 * F - 34 * F, h: f.h - 12 * F - 24 * F };
     if (box.w <= 10 || box.h <= 10) return;
 
     var days = hist.day, n = days.length, i;
@@ -960,7 +972,7 @@ var Charts = (function () {
     });
 
     /* 선 끝에 이름을 직접 붙인다 */
-    ctx.font = '600 10.5px system-ui, sans-serif';
+    ctx.font = '600 ' + (10.5 * (window.__fs || 1)) + 'px system-ui, sans-serif';
     ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
     var used = [];
     series.forEach(function (s) {
@@ -993,7 +1005,7 @@ var Charts = (function () {
 
     ctx.strokeStyle = 'rgba(255,255,255,0.06)';
     ctx.fillStyle = css('--muted');
-    ctx.font = '10px system-ui, sans-serif';
+    ctx.font = '' + (10 * (window.__fs || 1)) + 'px system-ui, sans-serif';
     var i;
     for (i = 0; i <= 4; i++) {
       var gy = box.t + box.h - box.h * i / 4;
@@ -1048,7 +1060,7 @@ var Charts = (function () {
     });
 
     ctx.fillStyle = css('--muted');
-    ctx.font = '10px system-ui, sans-serif';
+    ctx.font = '' + (10 * (window.__fs || 1)) + 'px system-ui, sans-serif';
     ctx.textAlign = 'left'; ctx.textBaseline = 'top';
     ctx.fillText(opts.xLabel || '', box.l, 0);
   }
@@ -1067,7 +1079,7 @@ var Charts = (function () {
     if (maxY <= 0) maxY = 1;
 
     ctx.strokeStyle = 'rgba(255,255,255,0.06)';
-    ctx.font = '10px system-ui, sans-serif';
+    ctx.font = '' + (10 * (window.__fs || 1)) + 'px system-ui, sans-serif';
     var i;
     for (i = 0; i <= 4; i++) {
       var gy = box.t + box.h - box.h * i / 4;
@@ -1112,12 +1124,12 @@ var Charts = (function () {
       ctx.stroke();
 
       ctx.fillStyle = css('--ink');
-      ctx.font = '700 10.5px system-ui, sans-serif';
+      ctx.font = '700 ' + (10.5 * (window.__fs || 1)) + 'px system-ui, sans-serif';
       ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
       ctx.fillText(Math.round(it.mean * 100) + '%', cx, y - 7);
 
       ctx.fillStyle = css('--muted');
-      ctx.font = '10px system-ui, sans-serif';
+      ctx.font = '' + (10 * (window.__fs || 1)) + 'px system-ui, sans-serif';
       ctx.textBaseline = 'top';
       var name = it.name;
       if (slot < 52 && name.length > 4) name = name.slice(0, 4);
